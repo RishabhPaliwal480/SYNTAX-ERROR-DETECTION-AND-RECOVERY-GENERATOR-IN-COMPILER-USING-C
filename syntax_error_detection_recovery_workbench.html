@@ -1,0 +1,2505 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Syntax.C — Predictive Syntax Error Detection & Recovery | JECRC CSE(AI)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                        serif: ['"Instrument Serif"', 'serif'],
+                        mono: ['"JetBrains Mono"', 'monospace'],
+                    },
+                    colors: {
+                        forest: {
+                            950: '#061110',
+                            900: '#0a1c1a',
+                            800: '#112e2a',
+                            700: '#1b453f',
+                            600: '#28645b',
+                            500: '#3d857a',
+                        },
+                        cream: {
+                            50: '#FAF8F5',
+                            100: '#F5F2EB',
+                            200: '#EAE5D9',
+                            300: '#DCD5C5',
+                        },
+                        terracotta: {
+                            400: '#E58F65',
+                            500: '#D97245',
+                            600: '#B8562C',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        :root {
+            --bg-obsidian: #061110;
+            --bg-cream: #F5F2EB;
+        }
+        body {
+            background-color: #061110;
+            color: #F3F5F4;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+        /* Atmospheric Hero Aurora Mesh */
+        .aurora-hero {
+            background:
+                radial-gradient(ellipse 68% 55% at 18% 22%, rgba(45, 106, 94, 0.42) 0%, transparent 65%),
+                radial-gradient(ellipse 60% 50% at 82% 28%, rgba(30, 82, 74, 0.38) 0%, transparent 65%),
+                radial-gradient(ellipse 55% 45% at 50% 88%, rgba(196, 114, 79, 0.22) 0%, transparent 70%),
+                linear-gradient(180deg, #071513 0%, #0b211e 55%, #081614 100%);
+        }
+        /* Subtle Noise Texture Overlay */
+        .noise-bg {
+            background-image: radial-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 0);
+            background-size: 24px 24px;
+        }
+        /* Frosted Glass Surfaces */
+        .glass-pill {
+            background: rgba(255, 255, 255, 0.055);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.11);
+        }
+        .glass-window {
+            background: rgba(11, 27, 25, 0.78);
+            backdrop-filter: blur(28px);
+            -webkit-backdrop-filter: blur(28px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 30px 90px -20px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255,255,255,0.06);
+        }
+        .glass-card-dark {
+            background: rgba(255, 255, 255, 0.035);
+            backdrop-filter: blur(14px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        /* Editorial Cream Cards */
+        .editorial-card {
+            background: #FAF8F5;
+            border: 1px solid rgba(17, 24, 22, 0.08);
+            box-shadow: 0 18px 40px -15px rgba(17, 24, 22, 0.05);
+        }
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(148, 163, 160, 0.25);
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(148, 163, 160, 0.45);
+        }
+        /* Layered Code Editor */
+        .editor-container {
+            position: relative;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13.5px;
+            line-height: 24px;
+        }
+        .editor-layer {
+            margin: 0;
+            padding: 16px 18px;
+            border: 0;
+            width: 100%;
+            height: 100%;
+            font-family: inherit;
+            font-size: inherit;
+            line-height: inherit;
+            white-space: pre;
+            overflow: auto;
+            box-sizing: border-box;
+        }
+        .editor-textarea {
+            position: absolute;
+            inset: 0;
+            z-index: 2;
+            color: transparent;
+            background: transparent;
+            caret-color: #5eead4;
+            resize: none;
+            outline: none;
+        }
+        .editor-backdrop {
+            position: absolute;
+            inset: 0;
+            z-index: 1;
+            pointer-events: none;
+            user-select: none;
+        }
+        .wavy-err {
+            text-decoration: underline wavy #E58F65;
+            text-underline-offset: 4px;
+        }
+        /* Gauge Ring Animation */
+        .gauge-ring {
+            transition: stroke-dashoffset 0.75s cubic-bezier(0.22, 1, 0.36, 1), stroke 0.4s ease;
+        }
+        /* Floating Ambient Pill Animation */
+        @keyframes floatSlow {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-6px); }
+        }
+        .float-slow {
+            animation: floatSlow 6s ease-in-out infinite;
+        }
+        .float-slow-delayed {
+            animation: floatSlow 7s ease-in-out 2s infinite;
+        }
+    </style>
+</head>
+<body class="selection:bg-teal-400/20 selection:text-teal-200">
+
+    <!-- =====================================================================
+         FLOATING PILL NAVIGATION BAR (FORESEE STYLE)
+    ====================================================================== -->
+    <header class="fixed top-5 inset-x-0 z-40 flex justify-center px-4 pointer-events-none">
+        <nav class="glass-pill pointer-events-auto rounded-full px-3 py-2 flex items-center gap-2 sm:gap-6 shadow-2xl">
+            <a href="#top" class="flex items-center gap-2 pl-2 pr-1 text-sm font-semibold tracking-tight text-white">
+                <span class="w-5 h-5 rounded-full bg-gradient-to-tr from-teal-400 to-emerald-300 flex items-center justify-center text-forest-950 font-mono text-[11px] font-bold">λ</span>
+                <span>Syntax.C</span>
+            </a>
+
+            <div class="hidden md:flex items-center gap-5 text-xs font-medium text-white/70">
+                <a href="#workbench" class="hover:text-white transition">Workbench</a>
+                <a href="#how-it-works" class="hover:text-white transition">How it works</a>
+                <a href="#readiness" class="hover:text-white transition">Syntax score</a>
+                <a href="#facets" class="hover:text-white transition">Recovery facets</a>
+                <a href="#grammar" class="hover:text-white transition">LL(1) Grammar</a>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <button id="openCModalBtn" class="px-3.5 py-1.5 rounded-full bg-white text-forest-950 hover:bg-cream-100 text-xs font-semibold tracking-tight transition shadow-sm cursor-pointer">
+                    View C Source (.c)
+                </button>
+            </div>
+        </nav>
+    </header>
+
+    <!-- =====================================================================
+         SECTION 1: ATMOSPHERIC HERO + FLOATING DIAGNOSTIC AGENTS + STUDIO
+    ====================================================================== -->
+    <section id="top" class="aurora-hero noise-bg relative pt-32 pb-24 px-4 sm:px-6 lg:px-8 border-b border-white/10">
+        
+        <div class="max-w-7xl mx-auto relative">
+
+            <!-- Floating Ambient Agent Cards (Desktop Decorative Context) -->
+            <div class="hidden xl:block absolute left-0 top-12 w-64 glass-pill rounded-2xl p-3.5 float-slow">
+                <div class="flex items-center justify-between text-[11px] text-white/60 mb-1">
+                    <span class="flex items-center gap-1.5">
+                        <span class="w-1.5 h-1.5 rounded-full bg-terracotta-400"></span>
+                        Phrase-level agent
+                    </span>
+                    <span class="font-mono text-white/50">Ln 1:Col 5</span>
+                </div>
+                <p class="text-xs text-white/85 font-normal leading-relaxed">
+                    "Missing right operand after <code class="font-mono text-terracotta-400">+</code>. Synthesizing placeholder <code class="font-mono text-teal-300">&lt;id&gt;</code>."
+                </p>
+            </div>
+
+            <div class="hidden xl:block absolute right-0 top-10 w-64 glass-pill rounded-2xl p-3.5 float-slow-delayed">
+                <div class="flex items-center justify-between text-[11px] text-white/60 mb-1">
+                    <span class="flex items-center gap-1.5">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                        Non-destructive check
+                    </span>
+                    <span id="heroFloatingScore" class="font-mono text-white font-semibold">82 / 100</span>
+                </div>
+                <p class="text-xs text-white/80 font-normal leading-relaxed">
+                    Resumes parsing at statement delimiter <code class="font-mono text-teal-300">;</code> without halting.
+                </p>
+            </div>
+
+            <div class="hidden xl:block absolute left-10 top-64 w-60 glass-pill rounded-2xl p-3.5 float-slow-delayed">
+                <div class="flex items-center justify-between text-[11px] text-white/60 mb-1">
+                    <span class="flex items-center gap-1.5">
+                        <span class="w-1.5 h-1.5 rounded-full bg-teal-300"></span>
+                        LL(1) Predictive Parser
+                    </span>
+                    <span class="font-mono text-white/50">5CAI4-02</span>
+                </div>
+                <p class="text-xs text-white/75 font-mono">
+                    E → T E' • T → F T' • F → (E)|id|num
+                </p>
+            </div>
+
+            <div class="hidden xl:block absolute right-8 top-60 w-64 glass-pill rounded-2xl p-3.5 float-slow">
+                <div class="flex items-center justify-between text-[11px] text-white/60 mb-1">
+                    <span class="flex items-center gap-1.5">
+                        <span class="w-1.5 h-1.5 rounded-full bg-amber-300"></span>
+                        JECRC CSE (AI)
+                    </span>
+                    <span class="font-mono text-white/50">RTU Kota</span>
+                </div>
+                <p class="text-xs text-white/80">
+                    Rishabh • Shashwat • Shagun<br>
+                    <span class="text-white/50 text-[11px]">Guide: Mrs. Renu Sharma</span>
+                </p>
+            </div>
+
+            <!-- Central Hero Headline -->
+            <div class="max-w-3xl mx-auto text-center">
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full glass-pill text-xs text-white/80 mb-6">
+                    <span class="px-1.5 py-0.5 rounded-full bg-terracotta-500 text-white text-[10px] font-semibold uppercase tracking-wider">RTU 5CAI4-22</span>
+                    <span>Recursive-Descent Syntax Recovery Engine in C</span>
+                    <span class="text-white/40">→</span>
+                </div>
+
+                <h1 class="text-4xl sm:text-6xl lg:text-[64px] font-semibold tracking-[-0.035em] text-white leading-[1.06]">
+                    Find what <span class="font-serif italic font-normal text-teal-200/95">fails</span> in syntax.<br>
+                    Before you compile.
+                </h1>
+
+                <p class="mt-5 text-sm sm:text-base text-white/65 max-w-xl mx-auto leading-relaxed font-normal">
+                    A compact educational C compiler frontend that tokenizes arithmetic expressions, pinpoints structural mistakes with exact coordinates, and synthesizes non-destructive recovery suggestions.
+                </p>
+
+                <!-- Sleek Command Input Bar (Foresee Hero Input Inspiration) -->
+                <div class="mt-8 max-w-xl mx-auto glass-pill rounded-full p-1.5 pl-4 flex items-center gap-2 shadow-2xl">
+                    <span class="text-white/40 font-mono text-xs select-none">expr&gt;</span>
+                    <input id="quickHeroInput" type="text" value="a + * b;" spellcheck="false"
+                        placeholder="Type a C-like expression statement, e.g. a + * b;"
+                        class="flex-1 bg-transparent text-white font-mono text-xs sm:text-sm focus:outline-none placeholder:text-white/30" />
+                    <button onclick="runFromHeroBar()" class="px-4 py-2.5 rounded-full bg-white hover:bg-cream-100 text-forest-950 font-semibold text-xs flex items-center gap-2 transition shrink-0 cursor-pointer">
+                        <span>Inspect syntax</span>
+                        <span class="w-4 h-4 rounded-full bg-forest-950 text-white flex items-center justify-center text-[10px]">↗</span>
+                    </button>
+                </div>
+
+                <!-- Preset Chips Row -->
+                <div class="mt-4 flex flex-wrap items-center justify-center gap-1.5 text-xs">
+                    <span class="text-white/45 text-[11px] mr-1 flex items-center gap-1.5">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                        5 synopsis benchmarks
+                    </span>
+                    <button onclick="loadPreset('valid')" class="preset-chip px-3 py-1 rounded-full glass-pill hover:bg-white/10 text-white/80 transition text-[11px] cursor-pointer">
+                        ✦ Valid Expression
+                    </button>
+                    <button onclick="loadPreset('missingOperand')" class="preset-chip px-3 py-1 rounded-full glass-pill hover:bg-white/10 text-white/80 transition text-[11px] cursor-pointer">
+                        ✦ Missing Operand (a + * b;)
+                    </button>
+                    <button onclick="loadPreset('unmatchedParen')" class="preset-chip px-3 py-1 rounded-full glass-pill hover:bg-white/10 text-white/80 transition text-[11px] cursor-pointer">
+                        ✦ Unmatched Paren
+                    </button>
+                    <button onclick="loadPreset('missingSemi')" class="preset-chip px-3 py-1 rounded-full glass-pill hover:bg-white/10 text-white/80 transition text-[11px] cursor-pointer">
+                        ✦ Missing Semicolon
+                    </button>
+                    <button onclick="loadPreset('multiPanic')" class="preset-chip px-3 py-1 rounded-full glass-pill hover:bg-white/10 text-white/80 transition text-[11px] cursor-pointer">
+                        ✦ Multi-Line Panic Suite
+                    </button>
+                </div>
+            </div>
+
+            <!-- =================================================================
+                 MACOS-STYLE FROSTED GLASS WORKBENCH WINDOW
+            ================================================================== -->
+            <div id="workbench" class="mt-14 glass-window rounded-[24px] overflow-hidden">
+                
+                <!-- Window Titlebar -->
+                <div class="px-5 py-3.5 border-b border-white/10 flex flex-wrap items-center justify-between gap-3 bg-white/[0.02]">
+                    <div class="flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-white/25"></span>
+                        <span class="w-2.5 h-2.5 rounded-full bg-white/25"></span>
+                        <span class="w-2.5 h-2.5 rounded-full bg-white/25"></span>
+                    </div>
+                    <div class="flex items-center gap-2 text-xs text-white/60 font-medium">
+                        <span class="text-teal-300">λ</span>
+                        <span>Syntax.C — Recursive-Descent Predictive Parser</span>
+                    </div>
+                    <div class="flex items-center gap-3 text-xs font-mono">
+                        <span class="flex items-center gap-1.5 text-emerald-300 text-[11px]">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                            Live AST & Recovery
+                        </span>
+                    </div>
+                </div>
+
+                <!-- 2-Column Split Studio Inside Window -->
+                <div class="grid grid-cols-1 lg:grid-cols-12 min-h-[540px]">
+                    
+                    <!-- LEFT PANE (5 Cols): Source Input, Pipeline Steps & Execution Trace -->
+                    <div class="lg:col-span-5 border-b lg:border-b-0 lg:border-r border-white/10 p-5 flex flex-col justify-between bg-white/[0.01]">
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <h2 class="text-sm font-semibold text-white tracking-tight">Analyze your source</h2>
+                                    <p class="text-[11px] text-white/50">Multi-line C expression stream with Line:Col tracking</p>
+                                </div>
+                                <span id="cursorPosIndicator" class="text-[11px] font-mono px-2 py-0.5 rounded-md bg-white/5 text-white/60 border border-white/10">
+                                    Ln 1, Col 1
+                                </span>
+                            </div>
+
+                            <!-- Layered Code Editor Box -->
+                            <div class="rounded-2xl bg-forest-950/90 border border-white/10 overflow-hidden flex h-44 shadow-inner">
+                                <div id="lineNumbersGutter" class="w-10 py-4 bg-white/[0.02] border-r border-white/5 text-right pr-2.5 select-none font-mono text-xs leading-[24px] text-white/35 shrink-0">
+                                    1
+                                </div>
+                                <div class="editor-container flex-1 h-full">
+                                    <div id="editorBackdrop" class="editor-layer editor-backdrop"></div>
+                                    <textarea id="sourceEditor" class="editor-layer editor-textarea" spellcheck="false" autocomplete="off" autocapitalize="off"></textarea>
+                                </div>
+                            </div>
+
+                            <!-- Pipeline Checklist Steps (Inspired by Foresee's "1. Scan this page / 2. Find what could fail / 3. Preview fixed") -->
+                            <div class="space-y-2 pt-1">
+                                <div class="text-[11px] font-mono uppercase tracking-wider text-white/40">Compiler Frontend Pipeline</div>
+                                <div class="space-y-1.5 text-xs">
+                                    <div class="flex items-center justify-between p-2.5 rounded-xl bg-white/[0.03] border border-white/5">
+                                        <div class="flex items-center gap-2.5">
+                                            <span class="w-5 h-5 rounded-full bg-teal-400/15 text-teal-300 font-mono text-[11px] flex items-center justify-center border border-teal-400/30">1</span>
+                                            <span class="text-white/85">Lexical tokenization & coordinate scan</span>
+                                        </div>
+                                        <span id="stepBadgeTokens" class="font-mono text-[11px] text-teal-300">0 tokens</span>
+                                    </div>
+                                    <div class="flex items-center justify-between p-2.5 rounded-xl bg-white/[0.03] border border-white/5">
+                                        <div class="flex items-center gap-2.5">
+                                            <span class="w-5 h-5 rounded-full bg-terracotta-400/15 text-terracotta-400 font-mono text-[11px] flex items-center justify-center border border-terracotta-400/30">2</span>
+                                            <span class="text-white/85">Detect syntax faults in LL(1) descent</span>
+                                        </div>
+                                        <span id="stepBadgeErrors" class="font-mono text-[11px] text-terracotta-400">0 faults</span>
+                                    </div>
+                                    <div class="flex items-center justify-between p-2.5 rounded-xl bg-white/[0.03] border border-white/5">
+                                        <div class="flex items-center gap-2.5">
+                                            <span class="w-5 h-5 rounded-full bg-emerald-400/15 text-emerald-300 font-mono text-[11px] flex items-center justify-center border border-emerald-400/30">3</span>
+                                            <span class="text-white/85">Synthesize non-destructive repair stream</span>
+                                        </div>
+                                        <span id="stepBadgeRepairs" class="font-mono text-[11px] text-emerald-300">Ready</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Bottom Action Pill in Left Pane -->
+                        <div class="pt-4 mt-4 border-t border-white/10 flex items-center justify-between gap-2">
+                            <button onclick="runCompilerPipeline()" class="w-full py-2.5 px-4 rounded-full bg-white/10 hover:bg-white/15 border border-white/15 text-white text-xs font-medium flex items-center justify-between transition cursor-pointer">
+                                <span>Re-run predictive parser</span>
+                                <span class="w-5 h-5 rounded-full bg-white text-forest-950 flex items-center justify-center font-bold text-[10px]">↗</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- RIGHT PANE (7 Cols): Tabbed Inspection Canvas -->
+                    <div class="lg:col-span-7 p-5 flex flex-col justify-between bg-forest-950/40">
+                        
+                        <!-- Top Sub-Header & View Switcher Pills -->
+                        <div>
+                            <div class="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-white/10">
+                                <div>
+                                    <div class="text-xs font-semibold text-white" id="activeCaseTitle">Active Inspection • Expression Stream</div>
+                                    <div class="text-[11px] text-white/50 font-mono" id="activeCaseSubtitle">Grammar: E → T E' | T → F T' | F → (E) | id | num</div>
+                                </div>
+
+                                <!-- Minimal Pill Tabs -->
+                                <div class="flex flex-wrap items-center gap-1 p-1 rounded-full bg-white/[0.04] border border-white/10">
+                                    <button onclick="switchStudioTab('diagnostics')" id="studioTabBtn-diagnostics" class="px-3 py-1 rounded-full text-[11px] font-medium transition bg-white text-forest-950 cursor-pointer">
+                                        Diagnostics & Repair
+                                    </button>
+                                    <button onclick="switchStudioTab('tree')" id="studioTabBtn-tree" class="px-3 py-1 rounded-full text-[11px] font-medium transition text-white/65 hover:text-white cursor-pointer">
+                                        Parse Tree (CST)
+                                    </button>
+                                    <button onclick="switchStudioTab('tokens')" id="studioTabBtn-tokens" class="px-3 py-1 rounded-full text-[11px] font-medium transition text-white/65 hover:text-white cursor-pointer">
+                                        Tokens
+                                    </button>
+                                    <button onclick="switchStudioTab('trace')" id="studioTabBtn-trace" class="px-3 py-1 rounded-full text-[11px] font-medium transition text-white/65 hover:text-white cursor-pointer">
+                                        Call Trace
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- STUDIO TAB 1: DIAGNOSTICS & NON-DESTRUCTIVE REPAIR -->
+                            <div id="studioPanel-diagnostics" class="mt-4 space-y-4">
+                                <!-- Non-Destructive Diff Card (Original vs Synthesized Repair) -->
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div class="rounded-2xl p-3.5 bg-white/[0.025] border border-white/10">
+                                        <div class="flex items-center justify-between text-[10px] font-mono uppercase tracking-wider text-white/45 mb-1.5">
+                                            <span>Original Source (Unmodified)</span>
+                                            <span>Read-Only</span>
+                                        </div>
+                                        <pre id="originalStreamBox" class="font-mono text-xs text-white/80 whitespace-pre-wrap break-all leading-relaxed"></pre>
+                                    </div>
+                                    <div class="rounded-2xl p-3.5 bg-emerald-950/30 border border-emerald-400/25">
+                                        <div class="flex items-center justify-between text-[10px] font-mono uppercase tracking-wider text-emerald-300/90 mb-1.5">
+                                            <span>Non-Destructive Repaired Stream</span>
+                                            <span class="px-1.5 py-0.2 rounded bg-emerald-400/15 text-emerald-200">Synthesized</span>
+                                        </div>
+                                        <div id="repairedStreamBox" class="font-mono text-xs text-emerald-200 whitespace-pre-wrap break-all leading-relaxed"></div>
+                                    </div>
+                                </div>
+
+                                <!-- GCC Caret Diagnostic Cards -->
+                                <div id="diagnosticsList" class="space-y-2.5 max-h-[300px] overflow-y-auto pr-1">
+                                    <!-- Populated dynamically -->
+                                </div>
+                            </div>
+
+                            <!-- STUDIO TAB 2: INTERACTIVE SVG PARSE TREE -->
+                            <div id="studioPanel-tree" class="hidden mt-4">
+                                <div class="flex flex-wrap items-center justify-between gap-2 mb-2 text-[11px] text-white/60">
+                                    <div class="flex flex-wrap items-center gap-3">
+                                        <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-teal-400"></span> Non-Terminal</span>
+                                        <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span> Matched Terminal</span>
+                                        <span class="flex items-center gap-1.5 text-terracotta-400 font-medium"><span class="w-2.5 h-2.5 rounded-full bg-terracotta-400"></span> [RECOVERED] Virtual Node</span>
+                                    </div>
+                                    <div class="flex items-center gap-1 font-mono">
+                                        <button onclick="zoomTree(0.85)" class="px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 border border-white/10 text-white/75 cursor-pointer">−</button>
+                                        <button onclick="zoomTree(1.0, true)" class="px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 border border-white/10 text-white/75 cursor-pointer">100%</button>
+                                        <button onclick="zoomTree(1.15)" class="px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 border border-white/10 text-white/75 cursor-pointer">+</button>
+                                    </div>
+                                </div>
+                                <div class="rounded-2xl bg-forest-950/90 border border-white/10 h-[350px] overflow-auto p-3 flex items-start justify-center">
+                                    <div id="svgTreeContainer" class="origin-top transition-transform duration-150"></div>
+                                </div>
+                            </div>
+
+                            <!-- STUDIO TAB 3: LEXICAL TOKEN STREAM -->
+                            <div id="studioPanel-tokens" class="hidden mt-4">
+                                <div class="rounded-2xl border border-white/10 overflow-hidden max-h-[380px] overflow-y-auto bg-forest-950/60">
+                                    <table class="w-full text-left border-collapse font-mono text-xs">
+                                        <thead>
+                                            <tr class="border-b border-white/10 text-[10px] uppercase text-white/45 bg-white/[0.02]">
+                                                <th class="py-2.5 px-3">#</th>
+                                                <th class="py-2.5 px-3">Token Type</th>
+                                                <th class="py-2.5 px-3">Lexeme</th>
+                                                <th class="py-2.5 px-3">Coords</th>
+                                                <th class="py-2.5 px-3">Scanner Classification</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="tokenTableBody" class="divide-y divide-white/5"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- STUDIO TAB 4: RECURSIVE-DESCENT CALL TRACE -->
+                            <div id="studioPanel-trace" class="hidden mt-4">
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-[11px] text-white/50 font-mono">Execution trace of parseExpression(), parseTerm(), parseFactor()</span>
+                                    <select id="traceFilter" onchange="renderTraceLog()" class="bg-forest-900 text-white/80 text-[11px] font-mono rounded-lg px-2.5 py-1 border border-white/15 focus:outline-none">
+                                        <option value="all">All Steps</option>
+                                        <option value="calls">Parser Calls Only</option>
+                                        <option value="matches">Matches & Recovery</option>
+                                    </select>
+                                </div>
+                                <div id="traceLogContainer" class="rounded-2xl bg-forest-950/80 border border-white/10 p-3 font-mono text-xs space-y-1 max-h-[345px] overflow-y-auto"></div>
+                            </div>
+                        </div>
+
+                        <!-- Bottom Progress Status Bar (Foresee Style) -->
+                        <div class="pt-4 mt-4 border-t border-white/10">
+                            <div class="w-full h-1 rounded-full bg-white/10 overflow-hidden mb-2">
+                                <div id="studioProgressBar" class="h-full bg-gradient-to-r from-teal-300 via-emerald-300 to-terracotta-400 transition-all duration-500" style="width: 100%"></div>
+                            </div>
+                            <div class="flex items-center justify-between text-[11px] text-white/55 font-mono">
+                                <span id="studioStatusText">Completed recursive-descent verification...</span>
+                                <span id="studioStatusRight">LL(1) Predictive Mode</span>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- =====================================================================
+         SECTION 2: EDITORIAL CREAM SECTION — "HOW IT WORKS" (3-STEP BENTO)
+    ====================================================================== -->
+    <section id="how-it-works" class="bg-cream-100 text-forest-950 py-24 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-6xl mx-auto">
+            
+            <!-- Editorial Section Heading -->
+            <div class="text-center max-w-2xl mx-auto">
+                <div class="inline-flex items-center gap-1.5 text-[11px] font-mono uppercase tracking-widest text-forest-700 mb-3">
+                    <span class="w-1.5 h-1.5 rounded-full bg-forest-600"></span>
+                    <span>HOW IT WORKS</span>
+                </div>
+                <h2 class="text-3xl sm:text-5xl font-semibold tracking-[-0.03em] text-forest-950 leading-[1.1]">
+                    From syntax uncertainty<br>
+                    to <span class="text-forest-600 font-serif italic font-normal">compiler confidence.</span>
+                </h2>
+                <p class="mt-4 text-sm sm:text-base text-forest-950/65 leading-relaxed">
+                    Beginner programmers often face cryptic compiler halts at the very first typo. Our C frontend separates tokenization, predictive LL(1) descent, and non-destructive phrase repair so every statement is analyzed in full.
+                </p>
+            </div>
+
+            <!-- Horizontal TimelineStepper Dots -->
+            <div class="hidden md:grid grid-cols-3 items-center mt-14 mb-6 px-4">
+                <div class="flex items-center">
+                    <span class="w-2.5 h-2.5 rounded-full bg-forest-700 ring-4 ring-forest-700/15"></span>
+                    <div class="flex-1 h-[1px] bg-forest-950/15 ml-2"></div>
+                </div>
+                <div class="flex items-center">
+                    <span class="w-2.5 h-2.5 rounded-full bg-forest-700 ring-4 ring-forest-700/15"></span>
+                    <div class="flex-1 h-[1px] bg-forest-950/15 ml-2"></div>
+                </div>
+                <div class="flex items-center">
+                    <span class="w-2.5 h-2.5 rounded-full bg-terracotta-500 ring-4 ring-terracotta-500/20"></span>
+                    <div class="flex-1 h-[1px] bg-forest-950/15 ml-2"></div>
+                </div>
+            </div>
+
+            <!-- 3 Bento Cards (Matching Foresee's 01 / 02 / 03 Layout) -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+                
+                <!-- Step 01 -->
+                <div class="flex flex-col">
+                    <div class="text-xs font-mono text-forest-950/45 mb-1">01</div>
+                    <h3 class="text-lg font-semibold tracking-tight text-forest-950">Scan & Tokenize Input</h3>
+                    <p class="text-xs text-forest-950/60 mt-1 mb-5">Converts raw character streams into coordinates-aware tokens.</p>
+
+                    <div class="flex-1 rounded-[24px] p-5 bg-gradient-to-b from-[#DCECE7] to-[#EBF3F0] border border-forest-950/10 flex flex-col justify-end shadow-sm">
+                        <div class="bg-white/95 backdrop-blur rounded-2xl p-4 border border-forest-950/5 shadow-sm">
+                            <div class="flex items-center justify-between text-xs font-semibold text-forest-950 mb-3">
+                                <span>Lexical Stream</span>
+                                <span class="font-mono text-[11px] text-forest-600">6 token classes</span>
+                            </div>
+                            <div class="space-y-2 font-mono text-[11px]">
+                                <div class="flex items-center justify-between py-1.5 px-2.5 rounded-lg bg-cream-50 border border-forest-950/5">
+                                    <span class="text-forest-800">TOKEN_ID / NUM</span>
+                                    <span class="text-emerald-600 font-bold">✓ Line:Col</span>
+                                </div>
+                                <div class="flex items-center justify-between py-1.5 px-2.5 rounded-lg bg-cream-50 border border-forest-950/5">
+                                    <span class="text-forest-800">OPERATOR (+ - * /)</span>
+                                    <span class="text-emerald-600 font-bold">✓ Precedence</span>
+                                </div>
+                                <div class="flex items-center justify-between py-1.5 px-2.5 rounded-lg bg-cream-50 border border-forest-950/5">
+                                    <span class="text-forest-800">DELIMITERS ( ) ;</span>
+                                    <span class="text-emerald-600 font-bold">✓ Boundary</span>
+                                </div>
+                                <div class="flex items-center justify-between py-1.5 px-2.5 rounded-lg bg-cream-50 border border-forest-950/5">
+                                    <span class="text-terracotta-600">TOKEN_INVALID (@ $)</span>
+                                    <span class="text-terracotta-600 font-bold">⚡ Flagged</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 02 -->
+                <div class="flex flex-col">
+                    <div class="text-xs font-mono text-forest-950/45 mb-1">02</div>
+                    <h3 class="text-lg font-semibold tracking-tight text-forest-950">Run Predictive LL(1) Descent</h3>
+                    <p class="text-xs text-forest-950/60 mt-1 mb-5">Executes mutually recursive C functions without left-recursion.</p>
+
+                    <div class="flex-1 rounded-[24px] p-5 bg-gradient-to-b from-forest-800 to-forest-950 text-white border border-forest-950/15 flex flex-col justify-end shadow-md">
+                        <div class="glass-pill rounded-2xl p-4">
+                            <div class="flex items-center justify-between text-xs text-white/70 mb-1">
+                                <span>Grammar Verification</span>
+                                <span class="px-2 py-0.5 rounded-full bg-emerald-400/20 text-emerald-200 text-[10px] font-mono">100% Traceable</span>
+                            </div>
+                            <div class="text-3xl font-semibold tracking-tight text-white font-mono my-2">LL(1)</div>
+                            <div class="w-full h-1 rounded-full bg-white/15 overflow-hidden mb-3">
+                                <div class="w-full h-full bg-teal-300"></div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-1.5 font-mono text-[10px] text-white/80">
+                                <span class="px-2 py-1 rounded bg-white/10">parseExpression()</span>
+                                <span class="px-2 py-1 rounded bg-white/10">parseExpressionPrime()</span>
+                                <span class="px-2 py-1 rounded bg-white/10">parseTerm()</span>
+                                <span class="px-2 py-1 rounded bg-white/10">parseFactor()</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 03 -->
+                <div class="flex flex-col">
+                    <div class="text-xs font-mono text-forest-950/45 mb-1">03</div>
+                    <h3 class="text-lg font-semibold tracking-tight text-forest-950">Synthesize Recovery Plan</h3>
+                    <p class="text-xs text-forest-950/60 mt-1 mb-5">Generates actionable fixes while keeping source code untouched.</p>
+
+                    <div class="flex-1 rounded-[24px] p-5 bg-gradient-to-b from-[#EFE3D8] to-[#F7F1EB] border border-forest-950/10 flex flex-col justify-between shadow-sm">
+                        <div class="self-end bg-forest-900 text-white rounded-xl px-3.5 py-2 text-xs font-mono shadow">
+                            <div class="text-[10px] text-white/60">Non-Destructive</div>
+                            <div class="text-sm font-bold text-teal-300">Zero Data Loss</div>
+                        </div>
+
+                        <div class="bg-white/95 backdrop-blur rounded-2xl p-4 border border-forest-950/5 shadow-sm mt-4">
+                            <div class="flex items-center justify-between text-xs font-semibold text-forest-950 mb-2.5">
+                                <span>Recovery Actions</span>
+                                <span class="font-mono text-[11px] text-terracotta-600">Auto-Suggested</span>
+                            </div>
+                            <ul class="space-y-2 text-xs text-forest-950/80">
+                                <li class="flex items-center gap-2">
+                                    <span class="w-4 h-4 rounded-full bg-terracotta-500/15 text-terracotta-600 flex items-center justify-center text-[10px] font-bold">✓</span>
+                                    <span>Virtual operand <code class="font-mono text-forest-700">&lt;id&gt;</code> insertion</span>
+                                </li>
+                                <li class="flex items-center gap-2">
+                                    <span class="w-4 h-4 rounded-full bg-terracotta-500/15 text-terracotta-600 flex items-center justify-center text-[10px] font-bold">✓</span>
+                                    <span>Extraneous token deletion</span>
+                                </li>
+                                <li class="flex items-center gap-2">
+                                    <span class="w-4 h-4 rounded-full bg-terracotta-500/15 text-terracotta-600 flex items-center justify-center text-[10px] font-bold">✓</span>
+                                    <span>Missing <code class="font-mono text-forest-700">)</code> and <code class="font-mono text-forest-700">;</code> closure</span>
+                                </li>
+                                <li class="flex items-center gap-2">
+                                    <span class="w-4 h-4 rounded-full bg-terracotta-500/15 text-terracotta-600 flex items-center justify-center text-[10px] font-bold">✓</span>
+                                    <span>Panic-mode sync at delimiter <code class="font-mono text-forest-700">;</code></span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- =====================================================================
+         SECTION 3: DARK EMERALD "SYNTAX READINESS" GAUGE DASHBOARD
+         (Directly Inspired by Foresee's "See the risks before they become problems" 74/100 View)
+    ====================================================================== -->
+    <section id="readiness" class="aurora-hero py-24 px-4 sm:px-6 lg:px-8 border-y border-white/10">
+        <div class="max-w-6xl mx-auto">
+            
+            <!-- Header Row -->
+            <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-10">
+                <div>
+                    <div class="inline-flex items-center gap-2 text-[11px] font-mono uppercase tracking-widest text-teal-300 mb-2">
+                        <span class="w-1.5 h-1.5 rounded-full bg-teal-300"></span>
+                        <span>SYNTAX INTEGRITY TELEMETRY</span>
+                    </div>
+                    <h2 class="text-3xl sm:text-5xl font-semibold tracking-[-0.03em] text-white leading-tight">
+                        See the syntax faults before<br>
+                        <span class="text-white/55">they halt compilation.</span>
+                    </h2>
+                </div>
+                <p class="text-xs sm:text-sm text-white/60 max-w-xs leading-relaxed">
+                    One composite integrity score, every lexical or structural fault ranked by location, and a non-destructive repair plan.
+                </p>
+            </div>
+
+            <!-- Dashboard Glass Container -->
+            <div class="glass-window rounded-[24px] p-6 sm:p-8">
+                
+                <!-- Top Bar Inside Dashboard -->
+                <div class="flex flex-wrap items-center justify-between gap-3 pb-6 border-b border-white/10">
+                    <div class="flex items-center gap-3">
+                        <span class="text-teal-300 font-bold">λ</span>
+                        <span class="text-sm font-semibold text-white">COMPILER DIAGNOSTIC TELEMETRY</span>
+                        <span id="telemetryStatusPill" class="px-2.5 py-0.5 rounded-md bg-white/10 text-white/80 font-mono text-[11px]">Live Run</span>
+                    </div>
+                    <div class="flex items-center gap-1.5 text-xs">
+                        <button onclick="loadPreset('valid')" class="px-3 py-1 rounded-full bg-white/5 hover:bg-white/10 text-white/75 border border-white/10 transition cursor-pointer">Valid (100)</button>
+                        <button onclick="loadPreset('missingOperand')" class="px-3 py-1 rounded-full bg-white/5 hover:bg-white/10 text-white/75 border border-white/10 transition cursor-pointer">Missing Op</button>
+                        <button onclick="loadPreset('multiPanic')" class="px-3 py-1 rounded-full bg-white/5 hover:bg-white/10 text-white/75 border border-white/10 transition cursor-pointer">Multi-Error</button>
+                    </div>
+                </div>
+
+                <!-- Main Telemetry Grid (Left Circular Gauge + Right Sub-Scores & "Focus First" Faults) -->
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-6">
+                    
+                    <!-- Left 4 Cols: Circular Syntax Readiness Gauge -->
+                    <div class="lg:col-span-4 glass-card-dark rounded-2xl p-6 flex flex-col justify-between">
+                        <div class="text-xs font-medium text-white/70">Syntax Integrity Score</div>
+
+                        <div class="my-6 flex items-center justify-center relative">
+                            <svg class="w-48 h-48 -rotate-90" viewBox="0 0 160 160">
+                                <circle cx="80" cy="80" r="64" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="10" />
+                                <circle id="readinessGaugeCircle" class="gauge-ring" cx="80" cy="80" r="64" fill="none"
+                                    stroke="#5eead4" stroke-width="10" stroke-linecap="round"
+                                    stroke-dasharray="402.12" stroke-dashoffset="80" />
+                            </svg>
+                            <div class="absolute inset-0 flex flex-col items-center justify-center">
+                                <div class="flex items-baseline">
+                                    <span id="readinessScoreValue" class="text-5xl font-semibold tracking-tight text-white">82</span>
+                                    <span class="text-sm text-white/45 font-mono ml-1">/100</span>
+                                </div>
+                                <span id="readinessScoreLabel" class="text-[11px] font-mono text-teal-300 mt-1">Recoverable</span>
+                            </div>
+                        </div>
+
+                        <!-- Bottom Fault Breakdown Counts -->
+                        <div class="grid grid-cols-2 gap-3 pt-4 border-t border-white/10 text-xs">
+                            <div class="flex items-center justify-between">
+                                <span class="flex items-center gap-1.5 text-white/60"><span class="w-2 h-2 rounded-full bg-terracotta-400"></span>Insertion Fix</span>
+                                <span id="countInsertions" class="font-mono font-semibold text-white">1</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="flex items-center gap-1.5 text-white/60"><span class="w-2 h-2 rounded-full bg-amber-300"></span>Deletion Fix</span>
+                                <span id="countDeletions" class="font-mono font-semibold text-white">0</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="flex items-center gap-1.5 text-white/60"><span class="w-2 h-2 rounded-full bg-teal-300"></span>Valid Tokens</span>
+                                <span id="countValidTokens" class="font-mono font-semibold text-white">5</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="flex items-center gap-1.5 text-white/60"><span class="w-2 h-2 rounded-full bg-emerald-400"></span>Statements</span>
+                                <span id="countStatements" class="font-mono font-semibold text-white">1</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right 8 Cols: 4 Sub-Metric Cards + "Focus First" Prioritized Recovery Queue -->
+                    <div class="lg:col-span-8 flex flex-col justify-between gap-6">
+                        
+                        <!-- 4 Sub-Metric Cards -->
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                            <div class="glass-card-dark rounded-2xl p-4 flex items-center gap-3">
+                                <div id="metricLexical" class="w-10 h-10 rounded-full border-2 border-emerald-400/70 flex items-center justify-center font-mono text-xs font-bold text-white shrink-0">100</div>
+                                <div>
+                                    <div class="text-xs font-semibold text-white">Lexical</div>
+                                    <div class="text-[11px] text-white/50">Token recognition</div>
+                                </div>
+                            </div>
+                            <div class="glass-card-dark rounded-2xl p-4 flex items-center gap-3">
+                                <div id="metricOperators" class="w-10 h-10 rounded-full border-2 border-terracotta-400/80 flex items-center justify-center font-mono text-xs font-bold text-white shrink-0">75</div>
+                                <div>
+                                    <div class="text-xs font-semibold text-white">Operands</div>
+                                    <div class="text-[11px] text-white/50">Binary balance</div>
+                                </div>
+                            </div>
+                            <div class="glass-card-dark rounded-2xl p-4 flex items-center gap-3">
+                                <div id="metricDelimiters" class="w-10 h-10 rounded-full border-2 border-teal-300/80 flex items-center justify-center font-mono text-xs font-bold text-white shrink-0">100</div>
+                                <div>
+                                    <div class="text-xs font-semibold text-white">Delimiters</div>
+                                    <div class="text-[11px] text-white/50">Parens & ';'</div>
+                                </div>
+                            </div>
+                            <div class="glass-card-dark rounded-2xl p-4 flex items-center gap-3">
+                                <div id="metricRecovery" class="w-10 h-10 rounded-full border-2 border-emerald-400/80 flex items-center justify-center font-mono text-xs font-bold text-white shrink-0">100</div>
+                                <div>
+                                    <div class="text-xs font-semibold text-white">Continuity</div>
+                                    <div class="text-[11px] text-white/50">No parser halt</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Focus First List (Exact Foresee Style) -->
+                        <div class="glass-card-dark rounded-2xl p-5 flex-1">
+                            <div class="flex items-center justify-between text-xs text-white/60 mb-4">
+                                <span class="font-semibold text-white">Focus first — Recovery Queue</span>
+                                <span class="font-mono text-[11px]">Sorted by token coordinate</span>
+                            </div>
+                            <div id="focusFirstContainer" class="space-y-2.5">
+                                <!-- Populated dynamically by JS -->
+                            </div>
+                        </div>
+
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- =====================================================================
+         SECTION 4: 4 VERTICAL SHOWCASE CARDS ("EVERY FACET OF RECOVERY")
+         (Inspired by Foresee's 4 vertical cards: Attention, Clarity, Relevance, Credibility)
+    ====================================================================== -->
+    <section id="facets" class="bg-cream-100 text-forest-950 py-24 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-6xl mx-auto">
+            
+            <div class="text-center max-w-3xl mx-auto mb-14">
+                <div class="inline-flex items-center gap-1.5 text-[11px] font-mono uppercase tracking-widest text-forest-700 mb-3">
+                    <span class="w-1.5 h-1.5 rounded-full bg-terracotta-500"></span>
+                    <span>COMPILER ARCHITECTURE PILLARS</span>
+                </div>
+                <h2 class="text-2xl sm:text-4xl font-medium tracking-[-0.025em] text-forest-950 leading-snug">
+                    Does it recognize every token? <span class="text-forest-950/40">Is the expected grammar symbol clear? Does it recover locally without corrupting the source?</span>
+                </h2>
+            </div>
+
+            <!-- Dark Frame Housing the 4 Vertical Cards -->
+            <div class="rounded-[28px] bg-[#070d0c] p-5 sm:p-7 shadow-2xl border border-forest-950/15">
+                <div class="flex items-center justify-between text-xs text-white/60 mb-5 px-1">
+                    <span class="flex items-center gap-2 font-medium text-white">
+                        <span class="text-teal-300">λ</span> 4 Core Modules in <code class="font-mono text-teal-200">syntax_recovery_compiler.c</code>
+                    </span>
+                    <span class="px-3 py-1 rounded-full bg-white/10 text-white/80 text-[11px] font-mono">RTU 5CAI4-02 Syllabus Aligned</span>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    
+                    <!-- Card 1: Emerald Gradient -->
+                    <div class="rounded-2xl p-5 min-h-[380px] flex flex-col justify-between bg-gradient-to-b from-[#173F39] to-[#0B1F1C] border border-white/10 text-white">
+                        <div class="flex justify-end">
+                            <span class="px-2.5 py-0.5 rounded-full bg-teal-300/20 text-teal-200 font-mono text-xs border border-teal-300/30">01</span>
+                        </div>
+                        <div class="my-auto py-6">
+                            <div class="rounded-xl bg-black/35 border border-white/10 p-3.5 font-mono text-[11px] space-y-1.5">
+                                <div class="text-teal-300">// lexicalAnalyze()</div>
+                                <div class="text-white/85">TOKEN_ID   "alpha"</div>
+                                <div class="text-white/85">TOKEN_PLUS "+"</div>
+                                <div class="text-emerald-300">Ln: 1 • Col: 7</div>
+                            </div>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-semibold tracking-tight">Lexical Precision.</h3>
+                            <div class="mt-3 pt-3 border-t border-white/10 flex items-center justify-between text-[11px] text-white/65">
+                                <span>Coordinate Scanner</span>
+                                <span class="px-2 py-0.5 rounded bg-white/10 text-white">Line & Col</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Card 2: Deep Obsidian Charcoal -->
+                    <div class="rounded-2xl p-5 min-h-[380px] flex flex-col justify-between bg-gradient-to-b from-[#1A2120] to-[#0D1110] border border-white/10 text-white">
+                        <div class="flex justify-end">
+                            <span class="px-2.5 py-0.5 rounded-full bg-terracotta-400/20 text-terracotta-400 font-mono text-xs border border-terracotta-400/30">02</span>
+                        </div>
+                        <div class="my-auto py-6 flex flex-col items-center">
+                            <div class="w-20 h-20 rounded-full border-2 border-terracotta-400/60 flex items-center justify-center font-mono text-lg font-bold text-white mb-3">
+                                LL(1)
+                            </div>
+                            <span class="px-3 py-1 rounded-full bg-white/5 border border-white/10 font-mono text-[11px] text-white/75">
+                                E → T E' • T → F T'
+                            </span>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-semibold tracking-tight">Predictive Control.</h3>
+                            <div class="mt-3 pt-3 border-t border-white/10 flex items-center justify-between text-[11px] text-white/65">
+                                <span>Recursive Descent</span>
+                                <span class="px-2 py-0.5 rounded bg-terracotta-500/20 text-terracotta-300">No Left-Rec</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Card 3: Soft Mint / Alabaster Light Card -->
+                    <div class="rounded-2xl p-5 min-h-[380px] flex flex-col justify-between bg-gradient-to-b from-[#DCECE8] to-[#F2F7F5] border border-white/20 text-forest-950">
+                        <div class="flex justify-end">
+                            <span class="px-2.5 py-0.5 rounded-full bg-forest-900/10 text-forest-900 font-mono text-xs border border-forest-900/20">03</span>
+                        </div>
+                        <div class="my-auto py-6">
+                            <div class="rounded-xl bg-white/90 border border-forest-950/10 p-3.5 font-mono text-[11px] space-y-1.5 shadow-sm">
+                                <div class="text-forest-600">Input:  a + * b;</div>
+                                <div class="text-terracotta-600 font-semibold">Fault:  Missing Opnd</div>
+                                <div class="text-emerald-700 font-bold">Repair: a + &lt;id&gt; * b;</div>
+                            </div>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-semibold tracking-tight text-forest-950">Phrase-Level Repair.</h3>
+                            <div class="mt-3 pt-3 border-t border-forest-950/10 flex items-center justify-between text-[11px] text-forest-950/70">
+                                <span>Local Insertion/Deletion</span>
+                                <span class="px-2 py-0.5 rounded bg-forest-900 text-white">Non-Destructive</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Card 4: Warm Terracotta / Sand Card -->
+                    <div class="rounded-2xl p-5 min-h-[380px] flex flex-col justify-between bg-gradient-to-b from-[#EED6C4] to-[#F7ECE2] border border-white/20 text-forest-950">
+                        <div class="flex justify-end">
+                            <span class="px-2.5 py-0.5 rounded-full bg-terracotta-600/15 text-terracotta-600 font-mono text-xs border border-terracotta-600/30">04</span>
+                        </div>
+                        <div class="my-auto py-6 flex flex-col items-center">
+                            <div class="w-full rounded-xl bg-white/90 border border-terracotta-600/25 p-4 text-center shadow-sm">
+                                <div class="font-mono text-2xl font-bold text-forest-950">FOLLOW(E)</div>
+                                <div class="font-mono text-xs text-terracotta-600 mt-1">{ ')', ';', EOF }</div>
+                            </div>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-semibold tracking-tight text-forest-950">Panic-Mode Sync.</h3>
+                            <div class="mt-3 pt-3 border-t border-forest-950/10 flex items-center justify-between text-[11px] text-forest-950/70">
+                                <span>Statement Boundary</span>
+                                <span class="px-2 py-0.5 rounded bg-terracotta-500 text-white">Sync ';'</span>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- =====================================================================
+         SECTION 5: LL(1) GRAMMAR, FIRST & FOLLOW SETS & PARSING TABLE
+    ====================================================================== -->
+    <section id="grammar" class="bg-cream-50 text-forest-950 py-24 px-4 sm:px-6 lg:px-8 border-t border-forest-950/10">
+        <div class="max-w-6xl mx-auto">
+            
+            <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-12">
+                <div>
+                    <div class="inline-flex items-center gap-1.5 text-[11px] font-mono uppercase tracking-widest text-forest-700 mb-2">
+                        <span class="w-1.5 h-1.5 rounded-full bg-forest-700"></span>
+                        <span>FORMAL GRAMMAR SPECIFICATION</span>
+                    </div>
+                    <h2 class="text-3xl sm:text-4xl font-semibold tracking-[-0.03em] text-forest-950">
+                        LL(1) Productions, FIRST/FOLLOW & Recovery Matrix.
+                    </h2>
+                </div>
+                <p class="text-xs sm:text-sm text-forest-950/60 max-w-md">
+                    Directly implements the future-enhancement specification from the RTU Kota synopsis report: explicit FIRST/FOLLOW sets and predictive parsing decisions.
+                </p>
+            </div>
+
+            <!-- Top 2 Cards: Productions + FIRST/FOLLOW -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                
+                <div class="editorial-card rounded-2xl p-6">
+                    <h3 class="text-xs font-mono uppercase tracking-wider text-forest-700 font-semibold mb-4">
+                        1. Left-Recursion Eliminated Expression Grammar
+                    </h3>
+                    <div class="space-y-2.5 font-mono text-xs">
+                        <div class="flex items-center justify-between py-2 border-b border-forest-950/10">
+                            <span><strong class="text-forest-800">Stmt</strong> → E ;</span>
+                            <span class="text-forest-950/45">parseStatement()</span>
+                        </div>
+                        <div class="flex items-center justify-between py-2 border-b border-forest-950/10">
+                            <span><strong class="text-forest-800">E</strong> → T E'</span>
+                            <span class="text-forest-950/45">parseExpression()</span>
+                        </div>
+                        <div class="flex items-center justify-between py-2 border-b border-forest-950/10">
+                            <span><strong class="text-forest-800">E'</strong> → + T E' | - T E' | ε</span>
+                            <span class="text-forest-950/45">parseExpressionPrime()</span>
+                        </div>
+                        <div class="flex items-center justify-between py-2 border-b border-forest-950/10">
+                            <span><strong class="text-forest-800">T</strong> → F T'</span>
+                            <span class="text-forest-950/45">parseTerm()</span>
+                        </div>
+                        <div class="flex items-center justify-between py-2 border-b border-forest-950/10">
+                            <span><strong class="text-forest-800">T'</strong> → * F T' | / F T' | ε</span>
+                            <span class="text-forest-950/45">parseTermPrime()</span>
+                        </div>
+                        <div class="flex items-center justify-between pt-1">
+                            <span><strong class="text-forest-800">F</strong> → ( E ) | id | num</span>
+                            <span class="text-forest-950/45">parseFactor()</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="editorial-card rounded-2xl p-6">
+                    <h3 class="text-xs font-mono uppercase tracking-wider text-forest-700 font-semibold mb-4">
+                        2. Computed FIRST(X), FOLLOW(X) & Synchronizing Sets
+                    </h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full font-mono text-xs text-left border-collapse">
+                            <thead>
+                                <tr class="border-b border-forest-950/15 text-forest-950/55">
+                                    <th class="py-2">Non-Terminal</th>
+                                    <th class="py-2">FIRST Set</th>
+                                    <th class="py-2">FOLLOW (Sync Set)</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-forest-950/10">
+                                <tr>
+                                    <td class="py-2.5 font-bold text-forest-900">E</td>
+                                    <td class="py-2.5 text-emerald-800">{ (, id, num }</td>
+                                    <td class="py-2.5 text-terracotta-600">{ ), ;, $ }</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-2.5 font-bold text-forest-900">E'</td>
+                                    <td class="py-2.5 text-emerald-800">{ +, -, ε }</td>
+                                    <td class="py-2.5 text-terracotta-600">{ ), ;, $ }</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-2.5 font-bold text-forest-900">T</td>
+                                    <td class="py-2.5 text-emerald-800">{ (, id, num }</td>
+                                    <td class="py-2.5 text-terracotta-600">{ +, -, ), ;, $ }</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-2.5 font-bold text-forest-900">T'</td>
+                                    <td class="py-2.5 text-emerald-800">{ *, /, ε }</td>
+                                    <td class="py-2.5 text-terracotta-600">{ +, -, ), ;, $ }</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-2.5 font-bold text-forest-900">F</td>
+                                    <td class="py-2.5 text-emerald-800">{ (, id, num }</td>
+                                    <td class="py-2.5 text-terracotta-600">{ *, /, +, -, ), ;, $ }</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Predictive Parsing & Recovery Table M[A, a] -->
+            <div class="editorial-card rounded-2xl p-6">
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+                    <h3 class="text-xs font-mono uppercase tracking-wider text-forest-700 font-semibold">
+                        3. LL(1) Predictive Parsing Table M[A, a] with Error Recovery Actions
+                    </h3>
+                    <div class="flex items-center gap-3 text-[11px] font-mono">
+                        <span class="flex items-center gap-1.5 text-emerald-800"><span class="w-2 h-2 rounded-full bg-emerald-600"></span> Standard Production</span>
+                        <span class="flex items-center gap-1.5 text-terracotta-600"><span class="w-2 h-2 rounded-full bg-terracotta-500"></span> Phrase-Level Insertion/Deletion</span>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full font-mono text-xs text-left border-collapse border border-forest-950/10 rounded-xl overflow-hidden">
+                        <thead>
+                            <tr class="bg-cream-200/70 text-forest-950 border-b border-forest-950/10">
+                                <th class="p-2.5 border-r border-forest-950/10">NT \ Lookahead</th>
+                                <th class="p-2.5 border-r border-forest-950/10">id / num</th>
+                                <th class="p-2.5 border-r border-forest-950/10">+ / -</th>
+                                <th class="p-2.5 border-r border-forest-950/10">* / /</th>
+                                <th class="p-2.5 border-r border-forest-950/10">(</th>
+                                <th class="p-2.5 border-r border-forest-950/10">)</th>
+                                <th class="p-2.5">; / $ (EOF)</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-forest-950/10">
+                            <tr>
+                                <td class="p-2.5 font-bold bg-cream-100 border-r border-forest-950/10">E</td>
+                                <td class="p-2.5 text-emerald-800 font-medium border-r border-forest-950/10">E → T E'</td>
+                                <td class="p-2.5 text-terracotta-600 bg-terracotta-500/5 border-r border-forest-950/10">[Ins &lt;id&gt;]</td>
+                                <td class="p-2.5 text-terracotta-600 bg-terracotta-500/5 border-r border-forest-950/10">[Ins &lt;id&gt;]</td>
+                                <td class="p-2.5 text-emerald-800 font-medium border-r border-forest-950/10">E → T E'</td>
+                                <td class="p-2.5 text-rose-700 bg-rose-500/5 border-r border-forest-950/10">[Sync / Pop]</td>
+                                <td class="p-2.5 text-rose-700 bg-rose-500/5">[Sync / Pop]</td>
+                            </tr>
+                            <tr>
+                                <td class="p-2.5 font-bold bg-cream-100 border-r border-forest-950/10">E'</td>
+                                <td class="p-2.5 text-terracotta-600 bg-terracotta-500/5 border-r border-forest-950/10">[Ins '+' Op]</td>
+                                <td class="p-2.5 text-emerald-800 font-medium border-r border-forest-950/10">E' → (±) T E'</td>
+                                <td class="p-2.5 text-terracotta-600 bg-terracotta-500/5 border-r border-forest-950/10">[Missing Opnd]</td>
+                                <td class="p-2.5 text-terracotta-600 bg-terracotta-500/5 border-r border-forest-950/10">[Ins '+' Op]</td>
+                                <td class="p-2.5 text-forest-700 border-r border-forest-950/10">E' → ε</td>
+                                <td class="p-2.5 text-forest-700">E' → ε</td>
+                            </tr>
+                            <tr>
+                                <td class="p-2.5 font-bold bg-cream-100 border-r border-forest-950/10">T</td>
+                                <td class="p-2.5 text-emerald-800 font-medium border-r border-forest-950/10">T → F T'</td>
+                                <td class="p-2.5 text-rose-700 bg-rose-500/5 border-r border-forest-950/10">[Sync FOLLOW]</td>
+                                <td class="p-2.5 text-terracotta-600 bg-terracotta-500/5 border-r border-forest-950/10">[Ins &lt;id&gt;]</td>
+                                <td class="p-2.5 text-emerald-800 font-medium border-r border-forest-950/10">T → F T'</td>
+                                <td class="p-2.5 text-rose-700 bg-rose-500/5 border-r border-forest-950/10">[Sync FOLLOW]</td>
+                                <td class="p-2.5 text-rose-700 bg-rose-500/5">[Sync FOLLOW]</td>
+                            </tr>
+                            <tr>
+                                <td class="p-2.5 font-bold bg-cream-100 border-r border-forest-950/10">T'</td>
+                                <td class="p-2.5 text-terracotta-600 bg-terracotta-500/5 border-r border-forest-950/10">[Ins '*' Op]</td>
+                                <td class="p-2.5 text-forest-700 border-r border-forest-950/10">T' → ε</td>
+                                <td class="p-2.5 text-emerald-800 font-medium border-r border-forest-950/10">T' → (*/÷) F T'</td>
+                                <td class="p-2.5 text-terracotta-600 bg-terracotta-500/5 border-r border-forest-950/10">[Ins '*' Op]</td>
+                                <td class="p-2.5 text-forest-700 border-r border-forest-950/10">T' → ε</td>
+                                <td class="p-2.5 text-forest-700">T' → ε</td>
+                            </tr>
+                            <tr>
+                                <td class="p-2.5 font-bold bg-cream-100 border-r border-forest-950/10">F</td>
+                                <td class="p-2.5 text-emerald-800 font-medium border-r border-forest-950/10">F → id | num</td>
+                                <td class="p-2.5 text-terracotta-600 bg-terracotta-500/5 border-r border-forest-950/10">[Ins &lt;id&gt;]</td>
+                                <td class="p-2.5 text-terracotta-600 bg-terracotta-500/5 border-r border-forest-950/10">[Ins &lt;id&gt;]</td>
+                                <td class="p-2.5 text-emerald-800 font-medium border-r border-forest-950/10">F → ( E )</td>
+                                <td class="p-2.5 text-terracotta-600 bg-terracotta-500/5 border-r border-forest-950/10">[Ins &lt;id&gt;]</td>
+                                <td class="p-2.5 text-terracotta-600 bg-terracotta-500/5">[Ins &lt;id&gt;]</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- =====================================================================
+         SECTION 6: MINIMALIST ACADEMIC FOOTER WITH SPOTLIGHT TYPOGRAPHY
+    ====================================================================== -->
+    <footer class="bg-[#050C0B] text-white pt-20 pb-12 px-4 sm:px-6 lg:px-8 border-t border-white/10 relative overflow-hidden">
+        <div class="max-w-6xl mx-auto relative z-10">
+            
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-10 pb-16 border-b border-white/10">
+                <div class="md:col-span-5 space-y-4">
+                    <div class="flex items-center gap-2 text-base font-semibold">
+                        <span class="w-5 h-5 rounded-full bg-teal-400 text-forest-950 flex items-center justify-center font-mono text-xs font-bold">λ</span>
+                        <span>Syntax.C</span>
+                    </div>
+                    <p class="text-xs text-white/60 max-w-sm leading-relaxed">
+                        "Syntax Error Detection and Recovery Generator in Compiler Using C" — Submitted in partial fulfillment for the award of Bachelor of Technology at Rajasthan Technical University, Kota.
+                    </p>
+                    <div class="pt-1">
+                        <button id="openCModalBtnFooter" class="px-4 py-2 rounded-full bg-white text-forest-950 hover:bg-cream-100 font-semibold text-xs inline-flex items-center gap-2 transition cursor-pointer">
+                            <span>Export C Implementation (.c)</span>
+                            <span class="w-4 h-4 rounded-full bg-forest-950 text-white flex items-center justify-center text-[10px]">↗</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="md:col-span-3 space-y-2 text-xs">
+                    <div class="font-mono text-[11px] uppercase tracking-wider text-white/40 mb-3">[SUBMITTED BY]</div>
+                    <div class="text-white/85 font-medium">Rishabh Paliwal <span class="font-mono text-teal-300 text-[11px]">[24EJCCA178]</span></div>
+                    <div class="text-white/85 font-medium">Shashwat Jain <span class="font-mono text-teal-300 text-[11px]">[24EJCCA190]</span></div>
+                    <div class="text-white/85 font-medium">Shagun Mishra <span class="font-mono text-teal-300 text-[11px]">[24EJCCA188]</span></div>
+                </div>
+
+                <div class="md:col-span-4 space-y-2 text-xs">
+                    <div class="font-mono text-[11px] uppercase tracking-wider text-white/40 mb-3">[SUPERVISION & INSTITUTION]</div>
+                    <div class="text-white/90 font-semibold">Mrs. Renu Sharma</div>
+                    <div class="text-white/60">Assistant Professor, Dept. of CSE (AI)</div>
+                    <div class="text-white/60 pt-1">Jaipur Engineering College and Research Centre (JECRC), Jaipur</div>
+                    <div class="text-teal-300/80 font-mono text-[11px]">Session 2026–2027 • V-Semester (5CAI4-02 / 5CAI4-22)</div>
+                </div>
+            </div>
+
+            <!-- Spotlight Giant Wordmark (Inspired by Foresee Footer) -->
+            <div class="py-10 text-center select-none relative">
+                <div class="text-6xl sm:text-8xl lg:text-[128px] font-semibold tracking-[-0.05em] bg-gradient-to-b from-white/25 via-white/10 to-transparent bg-clip-text text-transparent leading-none">
+                    Syntax.C
+                </div>
+            </div>
+
+            <div class="flex flex-wrap items-center justify-between gap-4 text-[11px] font-mono text-white/40 pt-4 border-t border-white/5">
+                <span>[JECRC • CSE(AI) • 2026-2027]</span>
+                <span>[LL(1) RECURSIVE-DESCENT COMPILER FRONTEND]</span>
+                <span>[FIND WHAT FAILS • RECOVER WITHOUT HALTING]</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- =====================================================================
+         MODAL: STANDALONE C SOURCE CODE (.C) VIEW, COPY & DOWNLOAD
+    ====================================================================== -->
+    <div id="cSourceModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden items-center justify-center p-4">
+        <div class="glass-window rounded-3xl max-w-4xl w-full max-h-[88vh] flex flex-col overflow-hidden border border-white/15">
+            <div class="px-6 py-4 border-b border-white/10 flex flex-wrap items-center justify-between gap-3 bg-white/[0.02]">
+                <div>
+                    <h3 class="text-sm font-semibold text-white font-mono">syntax_recovery_compiler.c — Standalone GCC Source</h3>
+                    <p class="text-xs text-white/55">Compile in Lab: <code class="text-teal-300 font-mono">gcc syntax_recovery_compiler.c -o syntax_recovery_compiler -Wall</code></p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="copyCSourceCode()" id="copyCBtn" class="px-3.5 py-1.5 rounded-full bg-white text-forest-950 hover:bg-cream-100 text-xs font-semibold transition cursor-pointer">
+                        Copy C Code
+                    </button>
+                    <button onclick="downloadCSourceFile()" class="px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white/15 text-white border border-white/15 text-xs font-medium transition cursor-pointer">
+                        Download .c
+                    </button>
+                    <button id="closeCModalBtn" class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center cursor-pointer">
+                        ✕
+                    </button>
+                </div>
+            </div>
+            <pre id="cModalCodeBlock" class="p-6 font-mono text-xs text-white/85 overflow-y-auto flex-1 bg-forest-950/90 leading-relaxed select-all"></pre>
+        </div>
+    </div>
+
+    <!-- =====================================================================
+         COMPILER ENGINE & INTERACTIVE UI SCRIPT
+    ====================================================================== -->
+    <script>
+        /***********************************************************************
+         * 1. SYNOPSIS BENCHMARK PRESETS
+         ***********************************************************************/
+        const PRESETS = {
+            valid: {
+                title: 'Benchmark 01 • Valid Arithmetic Expression',
+                code: `a + b * (c - 2);`
+            },
+            missingOperand: {
+                title: 'Benchmark 02 • Missing Right Operand After +',
+                code: `a + * b;`
+            },
+            unmatchedParen: {
+                title: 'Benchmark 03 • Unmatched Opening Parenthesis',
+                code: `result + (alpha * 10 - beta;`
+            },
+            missingSemi: {
+                title: 'Benchmark 04 • Missing Semicolon Delimiter',
+                code: `x + y * z`
+            },
+            multiPanic: {
+                title: 'Benchmark 05 • Multi-Statement Panic & Phrase Suite',
+                code: `a + b ) * c;\nval1 @ + 50;\np + q - ;`
+            }
+        };
+
+        let currentCompileState = {
+            source: '',
+            tokens: [],
+            diagnostics: [],
+            trace: [],
+            parseTrees: [],
+            repairedPieces: [],
+            treeZoom: 1.0
+        };
+
+        /***********************************************************************
+         * 2. LEXICAL ANALYZER (TOKENIZER WITH LINE/COL TRACKING)
+         ***********************************************************************/
+        function tokenizeSource(source) {
+            const tokens = [];
+            let i = 0;
+            let line = 1;
+            let col = 1;
+
+            while (i < source.length) {
+                const ch = source[i];
+
+                if (ch === '\n') {
+                    i++;
+                    line++;
+                    col = 1;
+                    continue;
+                }
+
+                if (ch === ' ' || ch === '\t' || ch === '\r') {
+                    i++;
+                    col++;
+                    continue;
+                }
+
+                if (ch === '/' && source[i + 1] === '/') {
+                    while (i < source.length && source[i] !== '\n') {
+                        i++;
+                        col++;
+                    }
+                    continue;
+                }
+
+                const startLine = line;
+                const startCol = col;
+
+                // Identifier: [a-zA-Z_][a-zA-Z0-9_]*
+                if (/[a-zA-Z_]/.test(ch)) {
+                    let lexeme = '';
+                    while (i < source.length && /[a-zA-Z0-9_]/.test(source[i])) {
+                        lexeme += source[i];
+                        i++;
+                        col++;
+                    }
+                    tokens.push({
+                        index: tokens.length,
+                        type: 'TOKEN_ID',
+                        lexeme,
+                        line: startLine,
+                        col: startCol,
+                        note: 'Identifier symbol'
+                    });
+                    continue;
+                }
+
+                // Integer Literal: [0-9]+
+                if (/[0-9]/.test(ch)) {
+                    let lexeme = '';
+                    while (i < source.length && /[0-9]/.test(source[i])) {
+                        lexeme += source[i];
+                        i++;
+                        col++;
+                    }
+                    tokens.push({
+                        index: tokens.length,
+                        type: 'TOKEN_NUM',
+                        lexeme,
+                        line: startLine,
+                        col: startCol,
+                        note: 'Integer constant'
+                    });
+                    continue;
+                }
+
+                const singleCharMap = {
+                    '+': { type: 'TOKEN_PLUS', note: 'Additive operator (+)' },
+                    '-': { type: 'TOKEN_MINUS', note: 'Additive operator (-)' },
+                    '*': { type: 'TOKEN_MUL', note: 'Multiplicative operator (*)' },
+                    '/': { type: 'TOKEN_DIV', note: 'Multiplicative operator (/)' },
+                    '(': { type: 'TOKEN_LPAREN', note: 'Opening parenthesis' },
+                    ')': { type: 'TOKEN_RPAREN', note: 'Closing parenthesis' },
+                    ';': { type: 'TOKEN_SEMI', note: 'Statement terminator (;)' }
+                };
+
+                if (singleCharMap[ch]) {
+                    tokens.push({
+                        index: tokens.length,
+                        type: singleCharMap[ch].type,
+                        lexeme: ch,
+                        line: startLine,
+                        col: startCol,
+                        note: singleCharMap[ch].note
+                    });
+                    i++;
+                    col++;
+                    continue;
+                }
+
+                tokens.push({
+                    index: tokens.length,
+                    type: 'TOKEN_INVALID',
+                    lexeme: ch,
+                    line: startLine,
+                    col: startCol,
+                    note: 'Unrecognized lexical symbol'
+                });
+                i++;
+                col++;
+            }
+
+            tokens.push({
+                index: tokens.length,
+                type: 'TOKEN_EOF',
+                lexeme: 'EOF',
+                line,
+                col,
+                note: 'End of token stream ($)'
+            });
+
+            return tokens;
+        }
+
+        /***********************************************************************
+         * 3. RECURSIVE-DESCENT PREDICTIVE PARSER & RECOVERY ENGINE
+         ***********************************************************************/
+        function parseAndRecover(source, rawTokens) {
+            const diagnostics = [];
+            const trace = [];
+            const parseTrees = [];
+            const repairedPieces = [];
+
+            let pos = 0;
+            let callDepth = 0;
+            let stmtCounter = 1;
+
+            function logTrace(kind, funcName, message, tokenObj = null) {
+                trace.push({
+                    step: trace.length + 1,
+                    depth: callDepth,
+                    kind,
+                    funcName,
+                    message,
+                    line: tokenObj ? tokenObj.line : null,
+                    col: tokenObj ? tokenObj.col : null
+                });
+            }
+
+            function peek() {
+                return rawTokens[pos] || rawTokens[rawTokens.length - 1];
+            }
+
+            function consumeInvalidTokens(contextFunc) {
+                while (peek().type === 'TOKEN_INVALID') {
+                    const badTok = peek();
+                    diagnostics.push({
+                        severity: 'Critical',
+                        category: 'Lexical Fault',
+                        strategy: 'Phrase-Level Deletion',
+                        line: badTok.line,
+                        col: badTok.col,
+                        lexeme: badTok.lexeme,
+                        message: `Unexpected invalid character '${badTok.lexeme}' in expression.`,
+                        suggestion: `Delete unrecognized symbol '${badTok.lexeme}' at Line ${badTok.line}, Col ${badTok.col}.`
+                    });
+                    logTrace('error', contextFunc, `Lexical Error at Ln ${badTok.line}, Col ${badTok.col}: Unrecognized '${badTok.lexeme}'`, badTok);
+                    logTrace('recover', contextFunc, `[Recovery: Deletion] Discarded invalid character '${badTok.lexeme}'`, badTok);
+                    repairedPieces.push({ text: `/*del:${badTok.lexeme}*/`, recovered: true, type: 'deleted' });
+                    pos++;
+                }
+            }
+
+            function advance() {
+                const tok = peek();
+                if (tok.type !== 'TOKEN_EOF') pos++;
+                return tok;
+            }
+
+            function parseStatement() {
+                consumeInvalidTokens('parseStatement()');
+                if (peek().type === 'TOKEN_EOF') return null;
+
+                const startTok = peek();
+                const stmtNode = {
+                    label: `Stmt #${stmtCounter++}`,
+                    kind: 'nonterminal',
+                    children: []
+                };
+
+                logTrace('enter', 'parseStatement()', `Starting statement at Ln ${startTok.line}, Col ${startTok.col}`, startTok);
+                callDepth++;
+
+                stmtNode.children.push(parseExpression(false));
+                consumeInvalidTokens('parseStatement()');
+
+                while (peek().type === 'TOKEN_RPAREN') {
+                    const strayParen = advance();
+                    diagnostics.push({
+                        severity: 'High',
+                        category: 'Delimiter Balance',
+                        strategy: 'Phrase-Level Deletion',
+                        line: strayParen.line,
+                        col: strayParen.col,
+                        lexeme: strayParen.lexeme,
+                        message: `Unmatched closing parenthesis ')' without matching '('.`,
+                        suggestion: `Delete extraneous ')' at Line ${strayParen.line}, Col ${strayParen.col} or insert '(' earlier.`
+                    });
+                    logTrace('error', 'parseStatement()', `Unmatched ')' at Ln ${strayParen.line}, Col ${strayParen.col}`, strayParen);
+                    logTrace('recover', 'parseStatement()', `[Recovery: Deletion] Removed stray ')' and resumed tail`, strayParen);
+                    repairedPieces.push({ text: `/*del:)*/`, recovered: true, type: 'deleted' });
+
+                    stmtNode.children.push({ label: `[DEL] ')'`, kind: 'recovered', children: [] });
+
+                    if (['TOKEN_PLUS', 'TOKEN_MINUS', 'TOKEN_MUL', 'TOKEN_DIV'].includes(peek().type)) {
+                        const contNode = { label: `Resumed Tail`, kind: 'recovered', children: [] };
+                        if (peek().type === 'TOKEN_MUL' || peek().type === 'TOKEN_DIV') contNode.children.push(parseTermPrime(false));
+                        if (peek().type === 'TOKEN_PLUS' || peek().type === 'TOKEN_MINUS') contNode.children.push(parseExpressionPrime(false));
+                        stmtNode.children.push(contNode);
+                    }
+                    consumeInvalidTokens('parseStatement()');
+                }
+
+                const endTok = peek();
+                if (endTok.type === 'TOKEN_SEMI') {
+                    advance();
+                    logTrace('match', 'parseStatement()', `Matched statement delimiter ';'`, endTok);
+                    repairedPieces.push({ text: ';\n', recovered: false });
+                    stmtNode.children.push({ label: `;`, kind: 'terminal', children: [] });
+                } else {
+                    const prevTok = rawTokens[Math.max(0, pos - 1)];
+                    const errLine = prevTok ? prevTok.line : endTok.line;
+                    const errCol = prevTok ? prevTok.col + prevTok.lexeme.length : endTok.col;
+
+                    diagnostics.push({
+                        severity: 'Medium',
+                        category: 'Statement Boundary',
+                        strategy: 'Phrase-Level Insertion',
+                        line: errLine,
+                        col: errCol,
+                        lexeme: endTok.lexeme,
+                        message: `Missing semicolon ';' at end of statement.`,
+                        suggestion: `Insert ';' at Line ${errLine}, Column ${errCol} to terminate statement.`
+                    });
+                    logTrace('error', 'parseStatement()', `Missing ';' at Ln ${errLine}, Col ${errCol}`, endTok);
+                    logTrace('recover', 'parseStatement()', `[Recovery: Insertion] Synthesized ';' at statement end`, endTok);
+
+                    repairedPieces.push({ text: ' /*ins*/;\n', recovered: true, type: 'inserted' });
+                    stmtNode.children.push({ label: `[RECOVERED] ';'`, kind: 'recovered', children: [] });
+
+                    if (endTok.type !== 'TOKEN_EOF' && endTok.line === errLine) {
+                        while (peek().type !== 'TOKEN_SEMI' && peek().type !== 'TOKEN_EOF') advance();
+                        if (peek().type === 'TOKEN_SEMI') advance();
+                    }
+                }
+
+                callDepth--;
+                logTrace('exit', 'parseStatement()', `Completed Statement`);
+                return stmtNode;
+            }
+
+            function parseExpression(insideParens) {
+                const node = { label: 'E', kind: 'nonterminal', children: [] };
+                logTrace('enter', 'parseExpression()', `Expanding E → T E'`, peek());
+                callDepth++;
+                node.children.push(parseTerm(insideParens));
+                node.children.push(parseExpressionPrime(insideParens));
+                callDepth--;
+                logTrace('exit', 'parseExpression()', `Completed E`);
+                return node;
+            }
+
+            function parseExpressionPrime(insideParens) {
+                consumeInvalidTokens('parseExpressionPrime()');
+                const tok = peek();
+                const node = { label: "E'", kind: 'nonterminal', children: [] };
+
+                logTrace('enter', 'parseExpressionPrime()', `Inspecting '${tok.lexeme}' for E'`, tok);
+                callDepth++;
+
+                if (tok.type === 'TOKEN_PLUS' || tok.type === 'TOKEN_MINUS') {
+                    advance();
+                    logTrace('match', 'parseExpressionPrime()', `Matched operator '${tok.lexeme}'`, tok);
+                    repairedPieces.push({ text: ` ${tok.lexeme} `, recovered: false });
+                    node.children.push({ label: tok.lexeme, kind: 'terminal', children: [] });
+
+                    consumeInvalidTokens('parseExpressionPrime()');
+                    const nextTok = peek();
+
+                    if (['TOKEN_PLUS', 'TOKEN_MINUS', 'TOKEN_MUL', 'TOKEN_DIV', 'TOKEN_SEMI', 'TOKEN_RPAREN', 'TOKEN_EOF'].includes(nextTok.type)) {
+                        diagnostics.push({
+                            severity: 'Critical',
+                            category: 'Missing Operand',
+                            strategy: 'Phrase-Level Insertion',
+                            line: nextTok.line,
+                            col: nextTok.col,
+                            lexeme: nextTok.lexeme,
+                            message: `Missing right operand after '${tok.lexeme}' (unexpected '${nextTok.lexeme}').`,
+                            suggestion: `Insert an identifier or number after '${tok.lexeme}', or delete redundant '${nextTok.lexeme}'.`
+                        });
+                        logTrace('error', 'parseExpressionPrime()', `Missing right operand after '${tok.lexeme}' at Ln ${nextTok.line}, Col ${nextTok.col}`, nextTok);
+                        logTrace('recover', 'parseExpressionPrime()', `[Recovery: Insertion] Synthesized virtual operand <id> after '${tok.lexeme}'`, nextTok);
+
+                        repairedPieces.push({ text: `<id>`, recovered: true, type: 'inserted' });
+                        const recTermNode = {
+                            label: 'T',
+                            kind: 'recovered',
+                            children: [
+                                { label: `F [RECOVERED <id>]`, kind: 'recovered', children: [] },
+                                parseTermPrime(insideParens)
+                            ]
+                        };
+                        node.children.push(recTermNode);
+                        node.children.push(parseExpressionPrime(insideParens));
+                    } else {
+                        node.children.push(parseTerm(insideParens));
+                        node.children.push(parseExpressionPrime(insideParens));
+                    }
+                } else if (tok.type === 'TOKEN_ID' || tok.type === 'TOKEN_NUM' || tok.type === 'TOKEN_LPAREN') {
+                    diagnostics.push({
+                        severity: 'High',
+                        category: 'Missing Operator',
+                        strategy: 'Phrase-Level Insertion',
+                        line: tok.line,
+                        col: tok.col,
+                        lexeme: tok.lexeme,
+                        message: `Missing binary operator before '${tok.lexeme}'.`,
+                        suggestion: `Insert '+', '-', '*', or '/' before '${tok.lexeme}' at Line ${tok.line}, Col ${tok.col}.`
+                    });
+                    logTrace('error', 'parseExpressionPrime()', `Missing operator before '${tok.lexeme}'`, tok);
+                    logTrace('recover', 'parseExpressionPrime()', `[Recovery: Insertion] Synthesized '+' before '${tok.lexeme}'`, tok);
+                    repairedPieces.push({ text: ` /*ins*/+ `, recovered: true, type: 'inserted' });
+
+                    node.children.push({ label: `[RECOVERED] '+'`, kind: 'recovered', children: [] });
+                    node.children.push(parseTerm(insideParens));
+                    node.children.push(parseExpressionPrime(insideParens));
+                } else {
+                    node.children.push({ label: 'ε', kind: 'epsilon', children: [] });
+                    logTrace('epsilon', 'parseExpressionPrime()', `Applied E' → ε on lookahead '${tok.lexeme}'`, tok);
+                }
+
+                callDepth--;
+                logTrace('exit', 'parseExpressionPrime()', `Completed E'`);
+                return node;
+            }
+
+            function parseTerm(insideParens) {
+                const node = { label: 'T', kind: 'nonterminal', children: [] };
+                logTrace('enter', 'parseTerm()', `Expanding T → F T'`, peek());
+                callDepth++;
+                node.children.push(parseFactor(insideParens));
+                node.children.push(parseTermPrime(insideParens));
+                callDepth--;
+                logTrace('exit', 'parseTerm()', `Completed T`);
+                return node;
+            }
+
+            function parseTermPrime(insideParens) {
+                consumeInvalidTokens('parseTermPrime()');
+                const tok = peek();
+                const node = { label: "T'", kind: 'nonterminal', children: [] };
+
+                logTrace('enter', 'parseTermPrime()', `Inspecting '${tok.lexeme}' for T'`, tok);
+                callDepth++;
+
+                if (tok.type === 'TOKEN_MUL' || tok.type === 'TOKEN_DIV') {
+                    advance();
+                    logTrace('match', 'parseTermPrime()', `Matched operator '${tok.lexeme}'`, tok);
+                    repairedPieces.push({ text: ` ${tok.lexeme} `, recovered: false });
+                    node.children.push({ label: tok.lexeme, kind: 'terminal', children: [] });
+
+                    consumeInvalidTokens('parseTermPrime()');
+                    const nextTok = peek();
+
+                    if (['TOKEN_PLUS', 'TOKEN_MINUS', 'TOKEN_MUL', 'TOKEN_DIV', 'TOKEN_SEMI', 'TOKEN_RPAREN', 'TOKEN_EOF'].includes(nextTok.type)) {
+                        diagnostics.push({
+                            severity: 'Critical',
+                            category: 'Missing Operand',
+                            strategy: 'Phrase-Level Insertion',
+                            line: nextTok.line,
+                            col: nextTok.col,
+                            lexeme: nextTok.lexeme,
+                            message: `Missing right operand after '${tok.lexeme}' (unexpected '${nextTok.lexeme}').`,
+                            suggestion: `Insert an identifier, number, or '(E)' after '${tok.lexeme}'.`
+                        });
+                        logTrace('error', 'parseTermPrime()', `Missing factor after '${tok.lexeme}'`, nextTok);
+                        logTrace('recover', 'parseTermPrime()', `[Recovery: Insertion] Synthesized <id> factor after '${tok.lexeme}'`, nextTok);
+
+                        repairedPieces.push({ text: `<id>`, recovered: true, type: 'inserted' });
+                        node.children.push({ label: `F [RECOVERED <id>]`, kind: 'recovered', children: [] });
+                        node.children.push(parseTermPrime(insideParens));
+                    } else {
+                        node.children.push(parseFactor(insideParens));
+                        node.children.push(parseTermPrime(insideParens));
+                    }
+                } else {
+                    node.children.push({ label: 'ε', kind: 'epsilon', children: [] });
+                    logTrace('epsilon', 'parseTermPrime()', `Applied T' → ε on lookahead '${tok.lexeme}'`, tok);
+                }
+
+                callDepth--;
+                logTrace('exit', 'parseTermPrime()', `Completed T'`);
+                return node;
+            }
+
+            function parseFactor(insideParens) {
+                consumeInvalidTokens('parseFactor()');
+                const tok = peek();
+                const node = { label: 'F', kind: 'nonterminal', children: [] };
+
+                logTrace('enter', 'parseFactor()', `Inspecting '${tok.lexeme}' for Factor F`, tok);
+                callDepth++;
+
+                if (tok.type === 'TOKEN_ID') {
+                    advance();
+                    logTrace('match', 'parseFactor()', `Matched identifier '${tok.lexeme}'`, tok);
+                    repairedPieces.push({ text: tok.lexeme, recovered: false });
+                    node.children.push({ label: `id (${tok.lexeme})`, kind: 'terminal', children: [] });
+                } else if (tok.type === 'TOKEN_NUM') {
+                    advance();
+                    logTrace('match', 'parseFactor()', `Matched number '${tok.lexeme}'`, tok);
+                    repairedPieces.push({ text: tok.lexeme, recovered: false });
+                    node.children.push({ label: `num (${tok.lexeme})`, kind: 'terminal', children: [] });
+                } else if (tok.type === 'TOKEN_LPAREN') {
+                    advance();
+                    logTrace('match', 'parseFactor()', `Matched '('`, tok);
+                    repairedPieces.push({ text: '(', recovered: false });
+                    node.children.push({ label: '(', kind: 'terminal', children: [] });
+
+                    node.children.push(parseExpression(true));
+
+                    consumeInvalidTokens('parseFactor()');
+                    const closeTok = peek();
+                    if (closeTok.type === 'TOKEN_RPAREN') {
+                        advance();
+                        logTrace('match', 'parseFactor()', `Matched ')'`, closeTok);
+                        repairedPieces.push({ text: ')', recovered: false });
+                        node.children.push({ label: ')', kind: 'terminal', children: [] });
+                    } else {
+                        diagnostics.push({
+                            severity: 'High',
+                            category: 'Delimiter Balance',
+                            strategy: 'Phrase-Level Insertion',
+                            line: closeTok.line,
+                            col: closeTok.col,
+                            lexeme: closeTok.lexeme,
+                            message: `Missing closing parenthesis ')' for '(' opened at Line ${tok.line}, Col ${tok.col}.`,
+                            suggestion: `Insert ')' before '${closeTok.lexeme}' at Line ${closeTok.line}, Column ${closeTok.col}.`
+                        });
+                        logTrace('error', 'parseFactor()', `Expected ')', found '${closeTok.lexeme}'`, closeTok);
+                        logTrace('recover', 'parseFactor()', `[Recovery: Insertion] Synthesized ')'`, closeTok);
+
+                        repairedPieces.push({ text: `/*ins*/)`, recovered: true, type: 'inserted' });
+                        node.children.push({ label: `[RECOVERED] ')'`, kind: 'recovered', children: [] });
+                    }
+                } else {
+                    diagnostics.push({
+                        severity: 'Critical',
+                        category: 'Missing Operand',
+                        strategy: 'Phrase-Level Insertion',
+                        line: tok.line,
+                        col: tok.col,
+                        lexeme: tok.lexeme,
+                        message: `Expected operand (id, num, or '('), but found '${tok.lexeme}'.`,
+                        suggestion: `Insert a valid identifier or number at Line ${tok.line}, Column ${tok.col}.`
+                    });
+                    logTrace('error', 'parseFactor()', `Expected Factor, found '${tok.lexeme}'`, tok);
+                    logTrace('recover', 'parseFactor()', `[Recovery: Insertion] Inserted virtual <id>`, tok);
+
+                    repairedPieces.push({ text: `<id>`, recovered: true, type: 'inserted' });
+                    node.kind = 'recovered';
+                    node.children.push({ label: `[RECOVERED] <id>`, kind: 'recovered', children: [] });
+                }
+
+                callDepth--;
+                logTrace('exit', 'parseFactor()', `Completed F`);
+                return node;
+            }
+
+            let guard = 0;
+            while (peek().type !== 'TOKEN_EOF' && guard < 100) {
+                guard++;
+                const before = pos;
+                const tree = parseStatement();
+                if (tree) parseTrees.push(tree);
+                if (pos === before && peek().type !== 'TOKEN_EOF') advance();
+            }
+
+            return { diagnostics, trace, parseTrees, repairedPieces };
+        }
+
+        /***********************************************************************
+         * 4. RENDERERS: EDITOR OVERLAY, DIAGNOSTICS, TELEMETRY GAUGE & SVG TREE
+         ***********************************************************************/
+        function escapeHtml(str) {
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+        }
+
+        function updateEditorBackdropAndGutter(source, diagnostics) {
+            const lines = source.split('\n');
+            const gutter = document.getElementById('lineNumbersGutter');
+            const errorLinesSet = new Set(diagnostics.map(d => d.line));
+
+            gutter.innerHTML = lines.map((_, idx) => {
+                const ln = idx + 1;
+                if (errorLinesSet.has(ln)) {
+                    return `<div class="text-terracotta-400 font-bold">${ln}</div>`;
+                }
+                return `<div>${ln}</div>`;
+            }).join('');
+
+            const highlightedLines = lines.map((lineText, idx) => {
+                const ln = idx + 1;
+                const lineErrors = diagnostics.filter(d => d.line === ln);
+                let html = '';
+                let i = 0;
+
+                while (i < lineText.length) {
+                    const ch = lineText[i];
+                    const col = i + 1;
+                    const hasErrHere = lineErrors.some(d => d.col === col);
+                    const errClass = hasErrHere ? 'wavy-err bg-terracotta-500/25 rounded px-0.5' : '';
+
+                    if (/[a-zA-Z_]/.test(ch)) {
+                        let word = '';
+                        while (i < lineText.length && /[a-zA-Z0-9_]/.test(lineText[i])) {
+                            word += lineText[i];
+                            i++;
+                        }
+                        html += `<span class="text-teal-200 ${errClass}">${escapeHtml(word)}</span>`;
+                    } else if (/[0-9]/.test(ch)) {
+                        let num = '';
+                        while (i < lineText.length && /[0-9]/.test(lineText[i])) {
+                            num += lineText[i];
+                            i++;
+                        }
+                        html += `<span class="text-emerald-300 ${errClass}">${escapeHtml(num)}</span>`;
+                    } else if ('+-*/'.includes(ch)) {
+                        html += `<span class="text-amber-300 font-semibold ${errClass}">${escapeHtml(ch)}</span>`;
+                        i++;
+                    } else if ('();'.includes(ch)) {
+                        html += `<span class="text-white/70 font-semibold ${errClass}">${escapeHtml(ch)}</span>`;
+                        i++;
+                    } else if (ch === ' ' || ch === '\t') {
+                        html += escapeHtml(ch);
+                        i++;
+                    } else {
+                        html += `<span class="text-terracotta-400 wavy-err bg-terracotta-500/25 font-bold">${escapeHtml(ch)}</span>`;
+                        i++;
+                    }
+                }
+
+                const eolErr = lineErrors.find(d => d.col > lineText.length);
+                if (eolErr) {
+                    html += `<span class="wavy-err text-terracotta-400 font-bold ml-0.5">‸</span>`;
+                }
+
+                return html || ' ';
+            });
+
+            document.getElementById('editorBackdrop').innerHTML = highlightedLines.join('\n');
+        }
+
+        function renderDiagnosticsAndDiff(source, diagnostics, repairedPieces) {
+            document.getElementById('originalStreamBox').textContent = source || '(empty)';
+
+            const repairedHtml = repairedPieces.map(piece => {
+                if (!piece.recovered) {
+                    return `<span>${escapeHtml(piece.text)}</span>`;
+                }
+                if (piece.type === 'deleted') {
+                    return `<span class="px-1.5 py-0.5 mx-0.5 rounded bg-terracotta-500/20 text-terracotta-300 line-through text-[11px]">${escapeHtml(piece.text)}</span>`;
+                }
+                return `<span class="px-1.5 py-0.5 mx-0.5 rounded bg-amber-400/20 text-amber-200 border border-amber-300/40 font-semibold">${escapeHtml(piece.text)}</span>`;
+            }).join('');
+
+            document.getElementById('repairedStreamBox').innerHTML = repairedHtml || '(empty)';
+
+            const listEl = document.getElementById('diagnosticsList');
+            const sourceLines = source.split('\n');
+
+            if (diagnostics.length === 0) {
+                listEl.innerHTML = `
+                    <div class="rounded-2xl p-4 bg-emerald-500/10 border border-emerald-400/25 flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <span class="w-8 h-8 rounded-full bg-emerald-400/20 text-emerald-300 flex items-center justify-center font-bold">✓</span>
+                            <div>
+                                <div class="text-xs font-semibold text-white">0 Syntax Faults — Valid LL(1) Expression</div>
+                                <div class="text-[11px] text-white/60">Every token satisfied the predictive parser without recovery intervention.</div>
+                            </div>
+                        </div>
+                        <span class="px-2.5 py-1 rounded-full bg-emerald-400/20 text-emerald-200 font-mono text-[10px]">100 / 100</span>
+                    </div>
+                `;
+                return;
+            }
+
+            listEl.innerHTML = diagnostics.map((diag, idx) => {
+                const codeLine = sourceLines[diag.line - 1] || '';
+                const caretSpaces = ' '.repeat(Math.max(0, diag.col - 1));
+                const caretLine = `${caretSpaces}^~~~`;
+
+                return `
+                    <div class="rounded-2xl p-4 bg-white/[0.03] border border-white/10 space-y-2.5">
+                        <div class="flex flex-wrap items-center justify-between gap-2">
+                            <div class="flex items-center gap-2">
+                                <span class="px-2 py-0.5 rounded-md bg-terracotta-500/25 text-terracotta-300 border border-terracotta-400/30 font-mono text-[10px] font-semibold">
+                                    ${escapeHtml(diag.severity)} • Ln ${diag.line}:Col ${diag.col}
+                                </span>
+                                <span class="text-xs font-semibold text-white">${escapeHtml(diag.message)}</span>
+                            </div>
+                            <span class="text-[10px] font-mono text-white/50">${escapeHtml(diag.strategy)}</span>
+                        </div>
+
+                        <div class="rounded-xl bg-forest-950/90 border border-white/5 px-3 py-2 font-mono text-[11px] overflow-x-auto">
+                            <div class="text-white/75"><span class="text-white/30 select-none mr-2">${String(diag.line).padStart(2, ' ')} |</span>${escapeHtml(codeLine)}</div>
+                            <div class="text-terracotta-400 font-bold"><span class="text-white/30 select-none mr-2">   |</span>${escapeHtml(caretLine)}</div>
+                        </div>
+
+                        <div class="text-xs text-teal-200/90 flex items-center gap-2">
+                            <span class="text-teal-300 font-mono">→ Fix:</span>
+                            <span>${escapeHtml(diag.suggestion)}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function updateReadinessDashboard(tokens, diagnostics, parseTrees, repairedPieces) {
+            const validTokCount = tokens.filter(t => t.type !== 'TOKEN_EOF' && t.type !== 'TOKEN_INVALID').length;
+            const errCount = diagnostics.length;
+
+            // Compute a realistic 0-100 Syntax Integrity Score
+            const rawScore = errCount === 0
+                ? 100
+                : Math.max(32, Math.round(100 - (errCount * 18)));
+
+            document.getElementById('readinessScoreValue').textContent = rawScore;
+            document.getElementById('heroFloatingScore').textContent = `${rawScore} / 100`;
+
+            const circumference = 402.12;
+            const offset = circumference - (rawScore / 100) * circumference;
+            const circle = document.getElementById('readinessGaugeCircle');
+            circle.style.strokeDashoffset = offset;
+            circle.style.stroke = errCount === 0 ? '#34d399' : (rawScore >= 70 ? '#5eead4' : '#E58F65');
+
+            document.getElementById('readinessScoreLabel').textContent = errCount === 0
+                ? 'Syntax Valid'
+                : `${errCount} Fault${errCount > 1 ? 's' : ''} Recovered`;
+
+            const insCount = repairedPieces.filter(p => p.recovered && p.type === 'inserted').length;
+            const delCount = repairedPieces.filter(p => p.recovered && p.type === 'deleted').length;
+
+            document.getElementById('countInsertions').textContent = insCount;
+            document.getElementById('countDeletions').textContent = delCount;
+            document.getElementById('countValidTokens').textContent = validTokCount;
+            document.getElementById('countStatements').textContent = Math.max(1, parseTrees.length);
+
+            // Sub-metrics
+            const lexInvalid = tokens.filter(t => t.type === 'TOKEN_INVALID').length;
+            const opFaults = diagnostics.filter(d => d.category.includes('Operand') || d.category.includes('Operator')).length;
+            const delimFaults = diagnostics.filter(d => d.category.includes('Delimiter') || d.category.includes('Boundary')).length;
+
+            document.getElementById('metricLexical').textContent = Math.max(50, 100 - lexInvalid * 25);
+            document.getElementById('metricOperators').textContent = Math.max(50, 100 - opFaults * 25);
+            document.getElementById('metricDelimiters').textContent = Math.max(50, 100 - delimFaults * 25);
+            document.getElementById('metricRecovery').textContent = '100';
+
+            // Focus First List
+            const focusEl = document.getElementById('focusFirstContainer');
+            if (diagnostics.length === 0) {
+                focusEl.innerHTML = `
+                    <div class="py-3 px-4 rounded-xl bg-white/[0.03] border border-white/5 flex items-center justify-between text-xs">
+                        <div class="flex items-center gap-3">
+                            <span class="px-2 py-0.5 rounded bg-emerald-400/20 text-emerald-300 font-mono text-[10px]">Optimal</span>
+                            <span class="text-white/85">All tokens conform to LL(1) production rules. Ready for semantic & code-gen stages.</span>
+                        </div>
+                        <span class="font-mono text-white/45 text-[11px]">0 actions needed</span>
+                    </div>
+                `;
+            } else {
+                focusEl.innerHTML = diagnostics.map(d => {
+                    const pillTone = d.severity === 'Critical'
+                        ? 'bg-terracotta-500/25 text-terracotta-300 border-terracotta-400/30'
+                        : 'bg-amber-400/20 text-amber-200 border-amber-300/30';
+                    return `
+                        <div class="py-2.5 px-3.5 rounded-xl bg-white/[0.03] border border-white/5 flex flex-wrap items-center justify-between gap-2 text-xs">
+                            <div class="flex items-center gap-2.5">
+                                <span class="px-2 py-0.5 rounded border font-mono text-[10px] ${pillTone}">${escapeHtml(d.severity)}</span>
+                                <span class="text-white font-medium">${escapeHtml(d.suggestion)}</span>
+                            </div>
+                            <span class="font-mono text-[11px] text-white/45">Ln ${d.line}:Col ${d.col} • ${escapeHtml(d.category)}</span>
+                        </div>
+                    `;
+                }).join('');
+            }
+        }
+
+        function renderTokenTable(tokens) {
+            const tbody = document.getElementById('tokenTableBody');
+            tbody.innerHTML = tokens.map(t => {
+                const isBad = t.type === 'TOKEN_INVALID';
+                const badge = isBad
+                    ? 'bg-terracotta-500/25 text-terracotta-300 border-terracotta-400/30'
+                    : 'bg-white/5 text-teal-200 border-white/10';
+                return `
+                    <tr class="hover:bg-white/[0.02]">
+                        <td class="py-2 px-3 text-white/40">#${t.index}</td>
+                        <td class="py-2 px-3"><span class="px-2 py-0.5 rounded text-[10px] border ${badge}">${t.type}</span></td>
+                        <td class="py-2 px-3 font-semibold text-white">${escapeHtml(t.lexeme)}</td>
+                        <td class="py-2 px-3 text-white/60">Ln ${t.line}, Col ${t.col}</td>
+                        <td class="py-2 px-3 text-white/45">${escapeHtml(t.note)}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function renderTraceLog() {
+            const filter = document.getElementById('traceFilter').value;
+            const container = document.getElementById('traceLogContainer');
+            const filtered = currentCompileState.trace.filter(item => {
+                if (filter === 'calls') return item.kind === 'enter' || item.kind === 'exit';
+                if (filter === 'matches') return ['match', 'error', 'recover'].includes(item.kind);
+                return true;
+            });
+
+            container.innerHTML = filtered.map(item => {
+                const indent = '&nbsp;&nbsp;'.repeat(Math.min(10, item.depth));
+                let tag = `<span class="text-white/40">↳</span>`;
+                let color = 'text-white/75';
+
+                if (item.kind === 'match') { tag = `<span class="text-emerald-400">✓</span>`; color = 'text-emerald-200'; }
+                else if (item.kind === 'error') { tag = `<span class="text-terracotta-400">✖</span>`; color = 'text-terracotta-300 font-semibold'; }
+                else if (item.kind === 'recover') { tag = `<span class="text-amber-300">⚡</span>`; color = 'text-amber-200 font-semibold'; }
+                else if (item.kind === 'epsilon') { tag = `<span class="text-teal-300">ε</span>`; color = 'text-teal-200/80'; }
+
+                return `
+                    <div class="py-0.5 px-1.5 rounded hover:bg-white/[0.03] flex items-baseline gap-2">
+                        <span class="text-[10px] text-white/30 w-6 shrink-0">${String(item.step).padStart(2, '0')}</span>
+                        <div class="truncate">
+                            <span>${indent}</span>${tag}
+                            <span class="text-teal-300/90 ml-1">${escapeHtml(item.funcName)}:</span>
+                            <span class="${color} ml-1">${escapeHtml(item.message)}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderSvgParseTree(trees) {
+            const container = document.getElementById('svgTreeContainer');
+            if (!trees || trees.length === 0) {
+                container.innerHTML = `<div class="text-white/40 font-mono text-xs p-8">No parse tree generated.</div>`;
+                return;
+            }
+
+            const root = trees.length === 1
+                ? trees[0]
+                : { label: 'Program', kind: 'nonterminal', children: trees };
+
+            const LEAF_W = 122;
+            const LEVEL_H = 70;
+
+            function measure(n) {
+                if (!n.children || n.children.length === 0) { n._w = LEAF_W; return LEAF_W; }
+                let sum = 0;
+                for (const c of n.children) sum += measure(c);
+                n._w = Math.max(LEAF_W, sum);
+                return n._w;
+            }
+            measure(root);
+
+            const nodes = [];
+            const links = [];
+            let maxD = 0;
+
+            function layout(n, d, left) {
+                maxD = Math.max(maxD, d);
+                n._x = left + n._w / 2;
+                n._y = 40 + d * LEVEL_H;
+                nodes.push(n);
+                if (n.children && n.children.length > 0) {
+                    let cur = left;
+                    for (const c of n.children) {
+                        layout(c, d + 1, cur);
+                        links.push({ x1: n._x, y1: n._y + 16, x2: c._x, y2: c._y - 16, rec: c.kind === 'recovered' });
+                        cur += c._w;
+                    }
+                }
+            }
+            layout(root, 0, 16);
+
+            const svgW = Math.max(600, root._w + 32);
+            const svgH = (maxD + 1) * LEVEL_H + 50;
+
+            const linksHtml = links.map(l => {
+                const stroke = l.rec ? '#E58F65' : 'rgba(255,255,255,0.22)';
+                const dash = l.rec ? 'stroke-dasharray="4 3"' : '';
+                const midY = (l.y1 + l.y2) / 2;
+                return `<path d="M ${l.x1} ${l.y1} C ${l.x1} ${midY}, ${l.x2} ${midY}, ${l.x2} ${l.y2}" fill="none" stroke="${stroke}" stroke-width="1.6" ${dash} />`;
+            }).join('');
+
+            const nodesHtml = nodes.map(n => {
+                let fill = '#0d2622';
+                let stroke = '#5eead4';
+                let text = '#f0fdfa';
+
+                if (n.kind === 'terminal') { fill = '#06392c'; stroke = '#34d399'; text = '#d1fae5'; }
+                else if (n.kind === 'recovered') { fill = '#431e11'; stroke = '#E58F65'; text = '#ffedd5'; }
+                else if (n.kind === 'epsilon') { fill = '#111c1a'; stroke = 'rgba(255,255,255,0.2)'; text = 'rgba(255,255,255,0.5)'; }
+
+                const bw = Math.max(62, Math.min(148, n.label.length * 7.8 + 22));
+                return `
+                    <g transform="translate(${n._x}, ${n._y})">
+                        <rect x="${-bw/2}" y="-16" width="${bw}" height="32" rx="9" fill="${fill}" stroke="${stroke}" stroke-width="1.5" />
+                        <text x="0" y="4" text-anchor="middle" fill="${text}" font-family="JetBrains Mono, monospace" font-size="11" font-weight="600">
+                            ${escapeHtml(n.label)}
+                        </text>
+                    </g>
+                `;
+            }).join('');
+
+            container.innerHTML = `<svg width="${svgW}" height="${svgH}" viewBox="0 0 ${svgW} ${svgH}" class="mx-auto select-none">${linksHtml}${nodesHtml}</svg>`;
+        }
+
+        function zoomTree(factor, reset = false) {
+            currentCompileState.treeZoom = reset ? 1.0 : Math.min(1.7, Math.max(0.5, currentCompileState.treeZoom * factor));
+            document.getElementById('svgTreeContainer').style.transform = `scale(${currentCompileState.treeZoom})`;
+        }
+
+        /***********************************************************************
+         * 5. MASTER CONTROLLER & INTERACTION HANDLERS
+         ***********************************************************************/
+        function runCompilerPipeline() {
+            const source = document.getElementById('sourceEditor').value;
+            document.getElementById('quickHeroInput').value = source.replace(/\n/g, ' ');
+
+            const tokens = tokenizeSource(source);
+            const result = parseAndRecover(source, tokens);
+
+            currentCompileState = {
+                source,
+                tokens,
+                diagnostics: result.diagnostics,
+                trace: result.trace,
+                parseTrees: result.parseTrees,
+                repairedPieces: result.repairedPieces,
+                treeZoom: currentCompileState.treeZoom || 1.0
+            };
+
+            const errCount = result.diagnostics.length;
+            const recCount = result.repairedPieces.filter(p => p.recovered).length;
+
+            document.getElementById('stepBadgeTokens').textContent = `${tokens.length} tokens`;
+            document.getElementById('stepBadgeErrors').textContent = errCount === 0 ? '0 faults' : `${errCount} fault${errCount > 1 ? 's' : ''}`;
+            document.getElementById('stepBadgeRepairs').textContent = recCount === 0 ? 'Valid' : `${recCount} synthesized`;
+
+            document.getElementById('studioStatusText').textContent = errCount === 0
+                ? 'Verified: 0 syntax errors. Input satisfies LL(1) expression grammar.'
+                : `Recovered ${errCount} syntax fault(s) using non-destructive phrase-level repair.`;
+
+            updateEditorBackdropAndGutter(source, result.diagnostics);
+            renderDiagnosticsAndDiff(source, result.diagnostics, result.repairedPieces);
+            updateReadinessDashboard(tokens, result.diagnostics, result.parseTrees, result.repairedPieces);
+            renderTokenTable(tokens);
+            renderTraceLog();
+            renderSvgParseTree(result.parseTrees);
+        }
+
+        function runFromHeroBar() {
+            const val = document.getElementById('quickHeroInput').value;
+            document.getElementById('sourceEditor').value = val;
+            document.getElementById('activeCaseTitle').textContent = 'Custom Expression Inspection';
+            runCompilerPipeline();
+            document.getElementById('workbench').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function loadPreset(key) {
+            const preset = PRESETS[key] || PRESETS.valid;
+            document.getElementById('sourceEditor').value = preset.code;
+            document.getElementById('activeCaseTitle').textContent = preset.title;
+            runCompilerPipeline();
+        }
+
+        function switchStudioTab(tab) {
+            ['diagnostics', 'tree', 'tokens', 'trace'].forEach(id => {
+                const panel = document.getElementById(`studioPanel-${id}`);
+                const btn = document.getElementById(`studioTabBtn-${id}`);
+                if (id === tab) {
+                    panel.classList.remove('hidden');
+                    btn.className = 'px-3 py-1 rounded-full text-[11px] font-medium transition bg-white text-forest-950 cursor-pointer';
+                } else {
+                    panel.classList.add('hidden');
+                    btn.className = 'px-3 py-1 rounded-full text-[11px] font-medium transition text-white/65 hover:text-white cursor-pointer';
+                }
+            });
+        }
+
+        /***********************************************************************
+         * 6. STANDALONE C SOURCE CODE FOR MODAL VIEW, COPY & DOWNLOAD
+         ***********************************************************************/
+        const EMBEDDED_C_SOURCE = `/*
+ * ======================================================================================
+ * PROJECT TITLE : SYNTAX ERROR DETECTION AND RECOVERY GENERATOR IN COMPILER USING C
+ * UNIVERSITY    : Rajasthan Technical University (RTU), Kota
+ * SYLLABUS      : B.Tech V-Semester CSE(AI) - 5CAI4-02 (Compiler Design) & 5CAI4-22 (Lab)
+ * INSTITUTION   : Jaipur Engineering College and Research Centre (JECRC), Jaipur
+ * DEPARTMENT    : Computer Science & Engineering (Artificial Intelligence)
+ *
+ * SUBMITTED BY  :
+ *   1. Rishabh Paliwal  [24EJCCA178]
+ *   2. Shashwat Jain    [24EJCCA190]
+ *   3. Shagun Mishra    [24EJCCA188]
+ *
+ * SUBMITTED TO  : Mrs. Renu Sharma (Assistant Professor)
+ *
+ * COMPILATION   : gcc syntax_recovery_compiler.c -o syntax_recovery_compiler -Wall
+ * EXECUTION     : ./syntax_recovery_compiler
+ * ======================================================================================
+ */
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+
+#define MAX_TOKENS   512
+#define MAX_ERRORS   128
+#define MAX_REPAIRED 2048
+#define MAX_LEXEME   64
+
+typedef enum {
+    TOKEN_ID, TOKEN_NUM,
+    TOKEN_PLUS, TOKEN_MINUS, TOKEN_MUL, TOKEN_DIV,
+    TOKEN_LPAREN, TOKEN_RPAREN, TOKEN_SEMI,
+    TOKEN_INVALID, TOKEN_EOF
+} TokenType;
+
+typedef struct {
+    int index;
+    TokenType type;
+    char lexeme[MAX_LEXEME];
+    int line;
+    int col;
+} Token;
+
+typedef struct {
+    int line;
+    int col;
+    char strategy[64];
+    char message[160];
+    char suggestion[160];
+} Diagnostic;
+
+static Token tokenStream[MAX_TOKENS];
+static int tokenCount = 0;
+static int currentTokenIdx = 0;
+
+static Diagnostic errorList[MAX_ERRORS];
+static int errorCount = 0;
+static char repairedBuffer[MAX_REPAIRED];
+
+void parseStatement(void);
+void parseExpression(void);
+void parseExpressionPrime(void);
+void parseTerm(void);
+void parseTermPrime(void);
+void parseFactor(void);
+
+const char* getTokenTypeName(TokenType type) {
+    switch (type) {
+        case TOKEN_ID:      return "TOKEN_ID     ";
+        case TOKEN_NUM:     return "TOKEN_NUM    ";
+        case TOKEN_PLUS:    return "TOKEN_PLUS   ";
+        case TOKEN_MINUS:   return "TOKEN_MINUS  ";
+        case TOKEN_MUL:     return "TOKEN_MUL    ";
+        case TOKEN_DIV:     return "TOKEN_DIV    ";
+        case TOKEN_LPAREN:  return "TOKEN_LPAREN ";
+        case TOKEN_RPAREN:  return "TOKEN_RPAREN ";
+        case TOKEN_SEMI:    return "TOKEN_SEMI   ";
+        case TOKEN_INVALID: return "TOKEN_INVALID";
+        case TOKEN_EOF:     return "TOKEN_EOF    ";
+        default:            return "UNKNOWN      ";
+    }
+}
+
+void appendRepaired(const char* fragment) {
+    if (strlen(repairedBuffer) + strlen(fragment) < MAX_REPAIRED - 1) {
+        strcat(repairedBuffer, fragment);
+    }
+}
+
+void reportSyntaxError(int line, int col, const char* strategy, const char* msg, const char* suggestion) {
+    if (errorCount < MAX_ERRORS) {
+        errorList[errorCount].line = line;
+        errorList[errorCount].col = col;
+        strncpy(errorList[errorCount].strategy, strategy, 63);
+        strncpy(errorList[errorCount].message, msg, 159);
+        strncpy(errorList[errorCount].suggestion, suggestion, 159);
+        errorCount++;
+    }
+}
+
+void lexicalAnalyze(const char* source) {
+    tokenCount = 0;
+    int i = 0, line = 1, col = 1;
+
+    while (source[i] != '\\0' && tokenCount < MAX_TOKENS - 1) {
+        char ch = source[i];
+        if (ch == '\\n') { i++; line++; col = 1; continue; }
+        if (ch == ' ' || ch == '\\t' || ch == '\\r') { i++; col++; continue; }
+
+        int startLine = line, startCol = col;
+        if (isalpha((unsigned char)ch) || ch == '_') {
+            int k = 0;
+            while ((isalnum((unsigned char)source[i]) || source[i] == '_') && k < MAX_LEXEME - 1) {
+                tokenStream[tokenCount].lexeme[k++] = source[i++]; col++;
+            }
+            tokenStream[tokenCount].lexeme[k] = '\\0';
+            tokenStream[tokenCount].index = tokenCount;
+            tokenStream[tokenCount].type = TOKEN_ID;
+            tokenStream[tokenCount].line = startLine;
+            tokenStream[tokenCount].col = startCol;
+            tokenCount++;
+            continue;
+        }
+        if (isdigit((unsigned char)ch)) {
+            int k = 0;
+            while (isdigit((unsigned char)source[i]) && k < MAX_LEXEME - 1) {
+                tokenStream[tokenCount].lexeme[k++] = source[i++]; col++;
+            }
+            tokenStream[tokenCount].lexeme[k] = '\\0';
+            tokenStream[tokenCount].index = tokenCount;
+            tokenStream[tokenCount].type = TOKEN_NUM;
+            tokenStream[tokenCount].line = startLine;
+            tokenStream[tokenCount].col = startCol;
+            tokenCount++;
+            continue;
+        }
+
+        tokenStream[tokenCount].index = tokenCount;
+        tokenStream[tokenCount].lexeme[0] = ch;
+        tokenStream[tokenCount].lexeme[1] = '\\0';
+        tokenStream[tokenCount].line = startLine;
+        tokenStream[tokenCount].col = startCol;
+        switch (ch) {
+            case '+': tokenStream[tokenCount].type = TOKEN_PLUS; break;
+            case '-': tokenStream[tokenCount].type = TOKEN_MINUS; break;
+            case '*': tokenStream[tokenCount].type = TOKEN_MUL; break;
+            case '/': tokenStream[tokenCount].type = TOKEN_DIV; break;
+            case '(': tokenStream[tokenCount].type = TOKEN_LPAREN; break;
+            case ')': tokenStream[tokenCount].type = TOKEN_RPAREN; break;
+            case ';': tokenStream[tokenCount].type = TOKEN_SEMI; break;
+            default:  tokenStream[tokenCount].type = TOKEN_INVALID; break;
+        }
+        i++; col++; tokenCount++;
+    }
+    tokenStream[tokenCount].index = tokenCount;
+    tokenStream[tokenCount].type = TOKEN_EOF;
+    strcpy(tokenStream[tokenCount].lexeme, "EOF");
+    tokenStream[tokenCount].line = line;
+    tokenStream[tokenCount].col = col;
+    tokenCount++;
+}
+
+Token lookahead(void) { return tokenStream[currentTokenIdx]; }
+Token consumeToken(void) {
+    Token t = tokenStream[currentTokenIdx];
+    if (t.type != TOKEN_EOF) currentTokenIdx++;
+    return t;
+}
+
+void filterInvalidLexemes(void) {
+    while (lookahead().type == TOKEN_INVALID) {
+        Token bad = consumeToken();
+        char msg[160], sug[160], delTag[64];
+        snprintf(msg, sizeof(msg), "Unexpected invalid symbol '%s' in expression.", bad.lexeme);
+        snprintf(sug, sizeof(sug), "Delete unrecognized symbol '%s' at Line %d, Col %d.", bad.lexeme, bad.line, bad.col);
+        reportSyntaxError(bad.line, bad.col, "Phrase-Level Deletion", msg, sug);
+        snprintf(delTag, sizeof(delTag), "/*del:%s*/", bad.lexeme);
+        appendRepaired(delTag);
+    }
+}
+
+void parseStatement(void) {
+    filterInvalidLexemes();
+    if (lookahead().type == TOKEN_EOF) return;
+    parseExpression();
+    filterInvalidLexemes();
+
+    while (lookahead().type == TOKEN_RPAREN) {
+        Token stray = consumeToken();
+        char msg[160], sug[160];
+        snprintf(msg, sizeof(msg), "Unmatched closing parenthesis ')' without matching '('.");
+        snprintf(sug, sizeof(sug), "Delete extraneous ')' at Line %d, Col %d or insert '(' earlier.", stray.line, stray.col);
+        reportSyntaxError(stray.line, stray.col, "Phrase-Level Deletion", msg, sug);
+        appendRepaired("/*del:)*/");
+        if (lookahead().type == TOKEN_MUL || lookahead().type == TOKEN_DIV) parseTermPrime();
+        if (lookahead().type == TOKEN_PLUS || lookahead().type == TOKEN_MINUS) parseExpressionPrime();
+        filterInvalidLexemes();
+    }
+
+    Token endTok = lookahead();
+    if (endTok.type == TOKEN_SEMI) {
+        consumeToken();
+        appendRepaired(";\\n");
+    } else {
+        Token prev = tokenStream[currentTokenIdx > 0 ? currentTokenIdx - 1 : 0];
+        int errLine = prev.line, errCol = prev.col + (int)strlen(prev.lexeme);
+        char msg[160], sug[160];
+        snprintf(msg, sizeof(msg), "Missing semicolon ';' at end of statement.");
+        snprintf(sug, sizeof(sug), "Insert ';' at Line %d, Column %d to terminate the statement.", errLine, errCol);
+        reportSyntaxError(errLine, errCol, "Phrase-Level Insertion", msg, sug);
+        appendRepaired(" /*ins*/;\\n");
+    }
+}
+
+void parseExpression(void) { parseTerm(); parseExpressionPrime(); }
+
+void parseExpressionPrime(void) {
+    filterInvalidLexemes();
+    Token tok = lookahead();
+    if (tok.type == TOKEN_PLUS || tok.type == TOKEN_MINUS) {
+        consumeToken();
+        appendRepaired(" "); appendRepaired(tok.lexeme); appendRepaired(" ");
+        filterInvalidLexemes();
+        Token next = lookahead();
+        if (next.type == TOKEN_PLUS || next.type == TOKEN_MINUS ||
+            next.type == TOKEN_MUL  || next.type == TOKEN_DIV   ||
+            next.type == TOKEN_SEMI || next.type == TOKEN_RPAREN || next.type == TOKEN_EOF) {
+            char msg[160], sug[160];
+            snprintf(msg, sizeof(msg), "Missing right operand after '%s' (unexpected '%s').", tok.lexeme, next.lexeme);
+            snprintf(sug, sizeof(sug), "Insert an identifier or number after '%s'.", tok.lexeme);
+            reportSyntaxError(next.line, next.col, "Phrase-Level Insertion", msg, sug);
+            appendRepaired("<id>");
+            parseTermPrime();
+            parseExpressionPrime();
+        } else {
+            parseTerm();
+            parseExpressionPrime();
+        }
+    }
+}
+
+void parseTerm(void) { parseFactor(); parseTermPrime(); }
+
+void parseTermPrime(void) {
+    filterInvalidLexemes();
+    Token tok = lookahead();
+    if (tok.type == TOKEN_MUL || tok.type == TOKEN_DIV) {
+        consumeToken();
+        appendRepaired(" "); appendRepaired(tok.lexeme); appendRepaired(" ");
+        filterInvalidLexemes();
+        Token next = lookahead();
+        if (next.type == TOKEN_PLUS || next.type == TOKEN_MINUS ||
+            next.type == TOKEN_MUL  || next.type == TOKEN_DIV   ||
+            next.type == TOKEN_SEMI || next.type == TOKEN_RPAREN || next.type == TOKEN_EOF) {
+            char msg[160], sug[160];
+            snprintf(msg, sizeof(msg), "Missing right operand after '%s' (unexpected '%s').", tok.lexeme, next.lexeme);
+            snprintf(sug, sizeof(sug), "Insert an identifier, number, or '(E)' after '%s'.", tok.lexeme);
+            reportSyntaxError(next.line, next.col, "Phrase-Level Insertion", msg, sug);
+            appendRepaired("<id>");
+            parseTermPrime();
+        } else {
+            parseFactor();
+            parseTermPrime();
+        }
+    }
+}
+
+void parseFactor(void) {
+    filterInvalidLexemes();
+    Token tok = lookahead();
+    if (tok.type == TOKEN_ID || tok.type == TOKEN_NUM) {
+        consumeToken();
+        appendRepaired(tok.lexeme);
+    } else if (tok.type == TOKEN_LPAREN) {
+        consumeToken();
+        appendRepaired("(");
+        parseExpression();
+        filterInvalidLexemes();
+        Token closeTok = lookahead();
+        if (closeTok.type == TOKEN_RPAREN) {
+            consumeToken();
+            appendRepaired(")");
+        } else {
+            char msg[160], sug[160];
+            snprintf(msg, sizeof(msg), "Missing closing parenthesis ')' for '(' opened at Line %d, Col %d.", tok.line, tok.col);
+            snprintf(sug, sizeof(sug), "Insert ')' before '%s' at Line %d, Column %d.", closeTok.lexeme, closeTok.line, closeTok.col);
+            reportSyntaxError(closeTok.line, closeTok.col, "Phrase-Level Insertion", msg, sug);
+            appendRepaired("/*ins*/)");
+        }
+    } else {
+        char msg[160], sug[160];
+        snprintf(msg, sizeof(msg), "Expected operand (id, num, or '('), but found '%s'.", tok.lexeme);
+        snprintf(sug, sizeof(sug), "Insert a valid variable identifier or number at Line %d, Column %d.", tok.line, tok.col);
+        reportSyntaxError(tok.line, tok.col, "Phrase-Level Insertion", msg, sug);
+        appendRepaired("<id>");
+    }
+}
+
+int main(void) {
+    const char* sample = "a + * b;";
+    lexicalAnalyze(sample);
+    while (lookahead().type != TOKEN_EOF) {
+        int prev = currentTokenIdx;
+        parseStatement();
+        if (currentTokenIdx == prev && lookahead().type != TOKEN_EOF) consumeToken();
+    }
+    printf("Repaired Stream: %s\\n", repairedBuffer);
+    return 0;
+}`;
+
+        function copyCSourceCode() {
+            const temp = document.createElement('textarea');
+            temp.value = EMBEDDED_C_SOURCE;
+            document.body.appendChild(temp);
+            temp.select();
+            document.execCommand('copy');
+            document.body.removeChild(temp);
+
+            const btn = document.getElementById('copyCBtn');
+            btn.textContent = '✓ Copied!';
+            setTimeout(() => { btn.textContent = 'Copy C Code'; }, 2000);
+        }
+
+        function downloadCSourceFile() {
+            const blob = new Blob([EMBEDDED_C_SOURCE], { type: 'text/x-c' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'syntax_recovery_compiler.c';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        window.onload = function () {
+            const editor = document.getElementById('sourceEditor');
+            const backdrop = document.getElementById('editorBackdrop');
+            const gutter = document.getElementById('lineNumbersGutter');
+
+            editor.addEventListener('scroll', () => {
+                backdrop.scrollTop = editor.scrollTop;
+                backdrop.scrollLeft = editor.scrollLeft;
+                gutter.scrollTop = editor.scrollTop;
+            });
+
+            editor.addEventListener('input', () => {
+                document.getElementById('activeCaseTitle').textContent = 'Live Edited Expression Stream';
+                runCompilerPipeline();
+            });
+
+            const updateCursor = () => {
+                const pos = editor.selectionStart || 0;
+                const lines = editor.value.slice(0, pos).split('\n');
+                document.getElementById('cursorPosIndicator').textContent = `Ln ${lines.length}, Col ${lines[lines.length - 1].length + 1}`;
+            };
+            editor.addEventListener('keyup', updateCursor);
+            editor.addEventListener('click', updateCursor);
+
+            // Hero Enter key support
+            document.getElementById('quickHeroInput').addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') runFromHeroBar();
+            });
+
+            // Modal triggers
+            const modal = document.getElementById('cSourceModal');
+            document.getElementById('cModalCodeBlock').textContent = EMBEDDED_C_SOURCE;
+            const openModal = () => { modal.classList.remove('hidden'); modal.classList.add('flex'); };
+            const closeModal = () => { modal.classList.add('hidden'); modal.classList.remove('flex'); };
+
+            document.getElementById('openCModalBtn').addEventListener('click', openModal);
+            document.getElementById('openCModalBtnFooter').addEventListener('click', openModal);
+            document.getElementById('closeCModalBtn').addEventListener('click', closeModal);
+
+            loadPreset('missingOperand');
+        };
+    </script>
+</body>
+</html>
